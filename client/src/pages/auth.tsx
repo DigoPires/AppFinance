@@ -136,7 +136,7 @@ export default function AuthPage() {
             <div className="mb-8 flex h-20 w-20 items-center justify-center rounded-2xl bg-white/20 backdrop-blur-sm">
               <Receipt className="h-10 w-10" />
             </div>
-            <h1 className="mb-4 text-4xl font-bold">FinControl</h1>
+            <h1 className="mb-4 text-4xl font-bold">AppFinance</h1>
             <p className="max-w-md text-lg opacity-90">
               Controle suas finanças de forma simples e eficiente.
               Acompanhe suas finanças pessoais em tempo real.

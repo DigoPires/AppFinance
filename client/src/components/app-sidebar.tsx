@@ -73,7 +73,7 @@ export function AppSidebar() {
           </div>
           <div className="flex flex-col">
             <span className="text-lg font-semibold" data-testid="text-app-name">
-              FinControl
+              AppFinance
             </span>
             <span className="text-xs text-muted-foreground">
               Controle Financeiro

@@ -73,7 +73,7 @@ const logger = winston.createLogger({
     winston.format.errors({ stack: true }),
     winston.format.json()
   ),
-  defaultMeta: { service: 'fincontrol' },
+  defaultMeta: { service: 'AppFinance' },
   transports: [
     new winston.transports.Console({
       format: winston.format.combine(

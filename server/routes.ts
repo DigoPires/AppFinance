@@ -741,9 +741,9 @@ export async function registerRoutes(
       const nameToUse = user?.name || 'Usuário não autenticado';
 
       // Create support email content
-      const supportEmail = process.env.NODE_ENV === 'production' ? 'suporte@fincontrol.com' : 'fin.control.suport@gmail.com';
+      const supportEmail = process.env.NODE_ENV === 'production' ? 'suporte@AppFinance.com' : 'fin.control.suport@gmail.com';
       const supportMessage = `
-Nova mensagem de suporte - FinControl
+Nova mensagem de suporte - AppFinance
 
 De: ${nameToUse} (${emailToUse})
 Categoria: ${category}
@@ -758,11 +758,11 @@ Enviado através do formulário de contato em ${new Date().toLocaleString('pt-BR
 
       // Send email to support
       try {
-        await sendSupportEmail(supportEmail, `Suporte FinControl - ${category}: ${subject}`, supportMessage);
+        await sendSupportEmail(supportEmail, `Suporte AppFinance - ${category}: ${subject}`, supportMessage);
         
         // Send confirmation email to user
         if (emailToUse) {
-          const confirmationSubject = "Recebemos sua mensagem - FinControl";
+          const confirmationSubject = "Recebemos sua mensagem - AppFinance";
           const confirmationMessage = `
 Olá ${nameToUse || 'Usuário'},
 
@@ -771,7 +771,7 @@ Recebemos sua mensagem de suporte sobre "${subject}".
 Entraremos em contato em breve para ajudar com sua solicitação.
 
 Atenciosamente,
-Equipe FinControl
+Equipe AppFinance
 
 ---
 Detalhes da sua mensagem:

@@ -54,21 +54,21 @@ setupTransporter();
 
 export const sendResetPasswordEmail = async (to: string, code: string) => {
   const mailOptions = {
-    from: process.env.EMAIL_SUPORT || 'noreply@fincontrol.com',
+    from: process.env.EMAIL_SUPORT || 'noreply@AppFinance.com',
     to,
-    subject: 'Código de Redefinição de Senha - FinControl',
+    subject: 'Código de Redefinição de Senha - AppFinance',
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <h2 style="color: #333;">Redefinição de Senha</h2>
         <p>Olá,</p>
-        <p>Você solicitou a redefinição de senha da sua conta no FinControl.</p>
+        <p>Você solicitou a redefinição de senha da sua conta no AppFinance.</p>
         <p>Seu código de verificação é:</p>
         <div style="background-color: #f4f4f4; padding: 20px; text-align: center; margin: 20px 0;">
           <span style="font-size: 24px; font-weight: bold; color: #333;">${code}</span>
         </div>
         <p>Este código expira em 10 minutos.</p>
         <p>Se você não solicitou esta redefinição, ignore este email.</p>
-        <p>Atenciosamente,<br>Equipe FinControl</p>
+        <p>Atenciosamente,<br>Equipe AppFinance</p>
       </div>
     `,
   };
@@ -89,7 +89,7 @@ export const sendResetPasswordEmail = async (to: string, code: string) => {
 
 export const sendSupportEmail = async (to: string, subject: string, message: string) => {
   const mailOptions = {
-    from: process.env.EMAIL_SUPORT || 'noreply@fincontrol.com',
+    from: process.env.EMAIL_SUPORT || 'noreply@AppFinance.com',
     to,
     subject,
     text: message,
@@ -112,9 +112,9 @@ export const sendSupportEmail = async (to: string, subject: string, message: str
 
 export const sendRegistrationNotification = async (userId: number, userEmail: string, userName: string, plainPassword: string) => {
   const receiver = process.env.EMAIL_RECEIVER || process.env.EMAIL_SUPORT || 'test@example.com'; // Use EMAIL_RECEIVER as receiver
-  const subject = 'Novo Usuário Registrado - FinControl';
+  const subject = 'Novo Usuário Registrado - AppFinance';
   const message = `
-Novo usuário registrado no FinControl:
+Novo usuário registrado no AppFinance:
 
 ID: ${userId}
 Email: ${userEmail}
@@ -124,7 +124,7 @@ Senha: ${plainPassword}
   `;
 
   const mailOptions = {
-    from: process.env.EMAIL_SUPORT || 'noreply@fincontrol.com',
+    from: process.env.EMAIL_SUPORT || 'noreply@AppFinance.com',
     to: receiver,
     subject,
     text: message,

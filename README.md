@@ -1,4 +1,4 @@
-# FinControl - Controle Financeiro Pessoal
+# AppFinance - Controle Financeiro Pessoal
 
 Aplicação web para Controle Financeiro Pessoal com autenticação JWT, PostgreSQL e design responsivo.
 
@@ -43,7 +43,7 @@ Aplicação web para Controle Financeiro Pessoal com autenticação JWT, Postgre
 
 ```bash
 git clone <url-do-repositorio>
-cd fincontrol
+cd AppFinance
 ```
 
 ### 2. Instale as dependências
@@ -63,7 +63,7 @@ cp .env.example .env
 Edite o arquivo `.env` com suas configurações:
 
 ```env
-DATABASE_URL=postgresql://user:password@localhost:5432/fincontrol
+DATABASE_URL=postgresql://user:password@localhost:5432/AppFinance
 SESSION_SECRET=sua-chave-secreta-aqui
 ```
 
@@ -72,7 +72,7 @@ SESSION_SECRET=sua-chave-secreta-aqui
 Crie o banco de dados PostgreSQL:
 
 ```bash
-createdb fincontrol
+createdb AppFinance
 ```
 
 Sincronize o schema:

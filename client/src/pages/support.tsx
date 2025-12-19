@@ -118,12 +118,12 @@ export default function SupportPage() {
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen flex flex-col lg:flex-row">
-        {/* Left side - FinControl branding */}
+        {/* Left side - AppFinance branding */}
         <div className="flex flex-col justify-center px-6 py-12 flex-1 bg-gradient-to-br from-primary/10 to-primary/5 lg:flex">
           <div className="mx-auto w-full max-w-md">
             <div className="flex items-center gap-2 mb-8">
               <Receipt className="h-8 w-8 text-primary" />
-              <span className="text-2xl font-bold">FinControl</span>
+              <span className="text-2xl font-bold">AppFinance</span>
             </div>
             <h1 className="text-3xl font-bold text-foreground mb-4">
               Controle suas finanças com facilidade
