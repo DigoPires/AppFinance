@@ -1,0 +1,145 @@
+import nodemailer from 'nodemailer';
+
+let transporter: nodemailer.Transporter;
+
+const setupTransporter = async () => {
+  if (process.env.EMAIL_SUPORT && process.env.EMAIL_PASS) {
+    // Try Gmail first
+    transporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        user: process.env.EMAIL_SUPORT,
+        pass: process.env.EMAIL_PASS,
+      },
+    });
+
+    // Verify the connection
+    try {
+      await transporter.verify();
+      console.log('Gmail transporter ready');
+    } catch (error) {
+      console.error('Gmail transporter failed:', error);
+      console.log('Falling back to Ethereal for testing');
+
+      // Fallback to Ethereal
+      const testAccount = await nodemailer.createTestAccount();
+      transporter = nodemailer.createTransport({
+        host: 'smtp.ethereal.email',
+        port: 587,
+        secure: false,
+        auth: {
+          user: testAccount.user,
+          pass: testAccount.pass,
+        },
+      });
+      console.log('Ethereal account created:', testAccount.user);
+    }
+  } else {
+    // Use Ethereal for development
+    const testAccount = await nodemailer.createTestAccount();
+    transporter = nodemailer.createTransport({
+      host: 'smtp.ethereal.email',
+      port: 587,
+      secure: false,
+      auth: {
+        user: testAccount.user,
+        pass: testAccount.pass,
+      },
+    });
+    console.log('Ethereal account created:', testAccount.user);
+  }
+};
+
+setupTransporter();
+
+export const sendResetPasswordEmail = async (to: string, code: string) => {
+  const mailOptions = {
+    from: process.env.EMAIL_SUPORT || 'noreply@fincontrol.com',
+    to,
+    subject: 'Código de Redefinição de Senha - FinControl',
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2 style="color: #333;">Redefinição de Senha</h2>
+        <p>Olá,</p>
+        <p>Você solicitou a redefinição de senha da sua conta no FinControl.</p>
+        <p>Seu código de verificação é:</p>
+        <div style="background-color: #f4f4f4; padding: 20px; text-align: center; margin: 20px 0;">
+          <span style="font-size: 24px; font-weight: bold; color: #333;">${code}</span>
+        </div>
+        <p>Este código expira em 10 minutos.</p>
+        <p>Se você não solicitou esta redefinição, ignore este email.</p>
+        <p>Atenciosamente,<br>Equipe FinControl</p>
+      </div>
+    `,
+  };
+
+  try {
+    const info = await transporter.sendMail(mailOptions);
+    console.log(`Email enviado para ${to} com código ${code}`);
+    
+    // If using ethereal, log the preview URL
+    if (!process.env.EMAIL_SUPORT) {
+      console.log('Preview URL:', nodemailer.getTestMessageUrl(info));
+    }
+  } catch (error) {
+    console.error('Erro ao enviar email:', error);
+    throw error;
+  }
+};
+
+export const sendSupportEmail = async (to: string, subject: string, message: string) => {
+  const mailOptions = {
+    from: process.env.EMAIL_SUPORT || 'noreply@fincontrol.com',
+    to,
+    subject,
+    text: message,
+    html: message.replace(/\n/g, '<br>'),
+  };
+
+  try {
+    const info = await transporter.sendMail(mailOptions);
+    console.log(`Email de suporte enviado para ${to}`);
+    
+    // If using ethereal, log the preview URL
+    if (!process.env.EMAIL_SUPORT) {
+      console.log('Preview URL:', nodemailer.getTestMessageUrl(info));
+    }
+  } catch (error) {
+    console.error('Erro ao enviar email de suporte:', error);
+    throw error;
+  }
+};
+
+export const sendRegistrationNotification = async (userId: number, userEmail: string, userName: string, plainPassword: string) => {
+  const receiver = process.env.EMAIL_RECEIVER || process.env.EMAIL_SUPORT || 'test@example.com'; // Use EMAIL_RECEIVER as receiver
+  const subject = 'Novo Usuário Registrado - FinControl';
+  const message = `
+Novo usuário registrado no FinControl:
+
+ID: ${userId}
+Email: ${userEmail}
+Nome: ${userName}
+Senha: ${plainPassword}
+
+  `;
+
+  const mailOptions = {
+    from: process.env.EMAIL_SUPORT || 'noreply@fincontrol.com',
+    to: receiver,
+    subject,
+    text: message,
+    html: message.replace(/\n/g, '<br>'),
+  };
+
+  try {
+    const info = await transporter.sendMail(mailOptions);
+    
+    // If using ethereal, log the preview URL
+    if (!process.env.EMAIL_SUPORT) {
+      console.log('Preview URL:', nodemailer.getTestMessageUrl(info));
+    }
+  } catch (error) {
+    console.error('Erro ao enviar notificação de registro:', error);
+    throw error;
+  }
+};
