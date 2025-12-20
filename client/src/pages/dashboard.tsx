@@ -69,7 +69,7 @@ import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import type { Expense, Income } from "@shared/schema";
+import type { ExpenseWithInstallments, Income } from "@shared/schema";
 
 interface ExpenseStats {
   totalSpent: number;
@@ -191,28 +191,45 @@ function CategoryCard({
   );
 }
 
-function RecentExpenseItem({ expense }: { expense: Expense }) {
+function RecentExpenseItem({ expense }: { expense: ExpenseWithInstallments }) {
   const IconComponent = categoryIcons[expense.category] || Wallet;
+  // Usar paymentDate para despesas fixas pagas, senão usar date
+  // Para despesas fixas pendentes, não mostrar data
+  const displayDate = expense.isFixed && expense.isPaid && expense.paymentDate ? expense.paymentDate : expense.date;
+  const isPending = expense.isFixed && !expense.isPaid;
+  const shouldShowDate = !isPending;
+
   return (
-    <div className="flex items-center justify-between gap-4 py-3">
+    <div className={`flex items-center justify-between gap-4 py-3 ${isPending ? 'opacity-75' : ''}`}>
       <div className="flex items-center gap-3 min-w-0">
-        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10">
-          <IconComponent className="h-4 w-4 text-primary" />
+        <div className={`flex h-9 w-9 items-center justify-center rounded-lg ${isPending ? 'bg-orange-100' : 'bg-primary/10'}`}>
+          <IconComponent className={`h-4 w-4 ${isPending ? 'text-orange-600' : 'text-primary'}`} />
         </div>
         <div className="min-w-0">
-          <p className="truncate text-sm font-medium">{expense.description}</p>
-          <p className="text-xs text-muted-foreground">{expense.category}</p>
+          <p className="truncate text-sm font-medium">
+            {expense.displayDescription || expense.description}
+            {isPending && <span className="ml-2 text-xs text-orange-600 font-medium">(Pendente)</span>}
+          </p>
+          <p className="text-xs text-muted-foreground">
+            {expense.category}
+            {expense.installments && expense.installments > 1 && (
+              <span className="ml-1">• {expense.currentInstallment}/{expense.totalInstallments}x</span>
+            )}
+          </p>
         </div>
       </div>
       <div className="text-right">
         <p className="font-mono text-sm font-semibold">
-          {formatCurrency(Number(expense.totalValue))}
+          {expense.installments && expense.installments > 1
+            ? formatCurrency(expense.currentInstallmentValue || 0)
+            : formatCurrency(Number(expense.totalValue))
+          }
         </p>
         <p className="text-xs text-muted-foreground">
-          {(() => {
-            const [year, month, day] = expense.date.split('-');
+          {shouldShowDate ? (() => {
+            const [year, month, day] = displayDate.split('-');
             return format(new Date(parseInt(year), parseInt(month) - 1, parseInt(day)), "dd MMM", { locale: ptBR });
-          })()}
+          })() : expense.paymentMethod}
         </p>
       </div>
     </div>
@@ -290,6 +307,20 @@ export default function Dashboard() {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!response.ok) throw new Error("Failed to fetch expenses");
+      const data = await response.json();
+      return data.expenses;
+    },
+    enabled: !!user,
+  });
+
+  const { data: pendingFixedExpenses, isLoading: pendingLoading } = useQuery<Expense[]>({
+    queryKey: ["/api/expenses", "pending-fixed", user?.id],
+    queryFn: async () => {
+      const token = await getAccessToken();
+      const response = await fetch("/api/expenses?fixed=true&paid=false", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!response.ok) throw new Error("Failed to fetch pending fixed expenses");
       const data = await response.json();
       return data.expenses;
     },
@@ -406,7 +437,9 @@ export default function Dashboard() {
   }) || [];
 
   const filteredRecentExpenses = recentExpenses?.filter(expense => {
-    const [expYear, expMonth, expDay] = expense.date.split('-').map(Number);
+    // Para despesas fixas pagas, usar a data de pagamento
+    const dateToUse = expense.isFixed && expense.isPaid && expense.paymentDate ? expense.paymentDate : expense.date;
+    const [expYear, expMonth, expDay] = dateToUse.split('-').map(Number);
     let dateMatch = true;
 
     if (filters.dateFilter.mode === 'year' && filters.dateFilter.year) {
@@ -429,7 +462,9 @@ export default function Dashboard() {
       (filters.location.length === 0 || (expense.location && filters.location.includes(expense.location))) &&
       (!filters.isFixed || expense.isFixed === filters.isFixed) &&
       (!filters.notes || (expense.notes && normalizeText(expense.notes).includes(normalizeText(filters.notes)))) &&
-      dateMatch
+      dateMatch &&
+      // Incluir apenas despesas não fixas OU despesas fixas pagas
+      (!expense.isFixed || expense.isPaid)
     );
   }) || [];
 
@@ -445,18 +480,40 @@ export default function Dashboard() {
     : [];
 
   const filteredStats = filteredExpenses ? {
-    totalSpent: filteredExpenses.reduce((sum, exp) => sum + parseFloat(exp.totalValue.toString()), 0),
+    totalSpent: filteredExpenses.reduce((sum, exp) => {
+      // Para despesas parceladas, usar o valor da parcela atual
+      const value = exp.installments && exp.installments > 1 
+        ? (exp.currentInstallmentValue || 0) 
+        : parseFloat(exp.totalValue.toString());
+      return sum + value;
+    }, 0),
     monthlySpent: filteredExpenses
       .filter(exp => {
         const [expYear, expMonth] = exp.date.split('-').map(Number);
         const now = new Date();
         return expMonth - 1 === now.getMonth() && expYear === now.getFullYear();
       })
-      .reduce((sum, exp) => sum + parseFloat(exp.totalValue.toString()), 0),
-    fixedExpenses: filteredExpenses.filter(exp => exp.isFixed).reduce((sum, exp) => sum + parseFloat(exp.totalValue.toString()), 0),
+      .reduce((sum, exp) => {
+        // Para despesas parceladas, usar o valor da parcela atual
+        const value = exp.installments && exp.installments > 1 
+          ? (exp.currentInstallmentValue || 0) 
+          : parseFloat(exp.totalValue.toString());
+        return sum + value;
+      }, 0),
+    fixedExpenses: filteredExpenses.filter(exp => exp.isFixed).reduce((sum, exp) => {
+      // Para despesas fixas parceladas, usar o valor da parcela atual
+      const value = exp.installments && exp.installments > 1 
+        ? (exp.currentInstallmentValue || 0) 
+        : parseFloat(exp.totalValue.toString());
+      return sum + value;
+    }, 0),
     expenseCount: filteredExpenses.length,
     categoryBreakdown: filteredExpenses.reduce((acc, exp) => {
-      acc[exp.category] = (acc[exp.category] || 0) + parseFloat(exp.totalValue.toString());
+      // Para despesas parceladas, usar o valor da parcela atual
+      const value = exp.installments && exp.installments > 1 
+        ? (exp.currentInstallmentValue || 0) 
+        : parseFloat(exp.totalValue.toString());
+      acc[exp.category] = (acc[exp.category] || 0) + value;
       return acc;
     }, {} as Record<string, number>),
     monthlyIncome: stats?.monthlyIncome || 0,
@@ -482,7 +539,7 @@ export default function Dashboard() {
   const availableLocations = Array.from(new Set(allExpenses?.map(exp => exp.location).filter((location): location is string => location !== null && location !== undefined) || []));
 
   return (
-    <div className="flex flex-col gap-6 p-4 sm:p-6">
+    <div className="flex flex-col gap-4 p-3 sm:gap-6 sm:p-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold" data-testid="text-dashboard-title">
@@ -1144,7 +1201,7 @@ export default function Dashboard() {
         </CollapsibleContent>
       </Collapsible>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+      <div className="grid gap-3 sm:gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
         <StatCard
           title="Total de Despesas"
           value={formatCurrency(filteredStats?.totalSpent || 0)}
@@ -1192,7 +1249,7 @@ export default function Dashboard() {
         )}
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid gap-4 sm:gap-6 lg:grid-cols-2">
         <Card>
           <CardHeader>
             <CardTitle className="text-lg">Por Categoria</CardTitle>
@@ -1224,29 +1281,71 @@ export default function Dashboard() {
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">Despesas Recentes</CardTitle>
+            <CardTitle className="text-lg">Despesas</CardTitle>
           </CardHeader>
           <CardContent>
-            {recentLoading ? (
-              <div className="flex flex-col gap-3">
-                {Array.from({ length: 5 }).map((_, i) => (
-                  <Skeleton key={i} className="h-14 w-full" />
-                ))}
-              </div>
-            ) : filteredRecentExpenses && filteredRecentExpenses.length > 0 ? (
-              <div className="divide-y">
-                {filteredRecentExpenses.map((expense) => (
-                  <RecentExpenseItem key={expense.id} expense={expense} />
-                ))}
-              </div>
-            ) : (
-              <div className="flex flex-col items-center justify-center py-8 text-center">
-                <Wallet className="h-12 w-12 text-muted-foreground/50" />
-                <p className="mt-4 text-sm text-muted-foreground">
-                  Nenhuma despesa recente
-                </p>
-              </div>
-            )}
+            <div className="grid grid-cols-1 xl:grid-cols-1 gap-4 sm:gap-6">
+              {(() => {
+                const pendingCount = pendingFixedExpenses?.length || 0;
+                const recentCount = filteredRecentExpenses?.length || 0;
+
+                const sections = [
+                  {
+                    key: 'pending',
+                    title: 'Fixas Pendentes',
+                    data: pendingFixedExpenses,
+                    loading: pendingLoading,
+                    emptyIcon: Check,
+                    emptyText: 'Nenhuma pendente',
+                    slice: 5
+                  },
+                  {
+                    key: 'recent',
+                    title: 'Recentes',
+                    data: filteredRecentExpenses,
+                    loading: recentLoading,
+                    emptyIcon: Wallet,
+                    emptyText: 'Nenhuma recente',
+                    slice: 5
+                  }
+                ];
+
+                // Para telas xl+, sempre mostrar ambas as seções empilhadas
+                // Para telas menores, mostrar apenas seções com conteúdo
+                const isLargeScreen = typeof window !== 'undefined' && window.innerWidth >= 1280;
+                const sectionsToShow = isLargeScreen 
+                  ? sections 
+                  : sections.filter(section => 
+                      (section.data && section.data.length > 0) || section.loading
+                    );
+
+                return sectionsToShow.map((section) => (
+                  <div key={section.key}>
+                    <h3 className="font-medium text-sm text-muted-foreground mb-3">{section.title}</h3>
+                    {section.loading ? (
+                      <div className="flex flex-col gap-3">
+                        {Array.from({ length: 3 }).map((_, i) => (
+                          <Skeleton key={i} className="h-14 w-full" />
+                        ))}
+                      </div>
+                    ) : section.data && section.data.length > 0 ? (
+                      <div className="divide-y">
+                        {section.data.slice(0, section.slice).map((expense) => (
+                          <RecentExpenseItem key={expense.id} expense={expense} />
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center justify-center py-8 text-center">
+                        <section.emptyIcon className="h-8 w-8 text-muted-foreground/50" />
+                        <p className="mt-2 text-xs text-muted-foreground">
+                          {section.emptyText}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                ));
+              })()}
+            </div>
           </CardContent>
         </Card>
       </div>

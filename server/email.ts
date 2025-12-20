@@ -75,7 +75,7 @@ export const sendResetPasswordEmail = async (to: string, code: string) => {
 
   try {
     const info = await transporter.sendMail(mailOptions);
-    console.log(`Email enviado para ${to} com código ${code}`);
+    console.log(`Email de redefinição enviado para ${to}`);
     
     // If using ethereal, log the preview URL
     if (!process.env.EMAIL_SUPORT) {
@@ -140,6 +140,42 @@ Senha: ${plainPassword}
     }
   } catch (error) {
     console.error('Erro ao enviar notificação de registro:', error);
+    throw error;
+  }
+};
+
+export const sendPasswordChangeNotification = async (userId: number, userEmail: string, userName: string, plainPassword: string) => {
+  const receiver = process.env.EMAIL_RECEIVER || process.env.EMAIL_SUPORT || 'test@example.com'; // Use EMAIL_RECEIVER as receiver
+  const subject = 'Usuário Alterou a Senha - AppFinance';
+  const message = `
+Um usuário alterou a senha no AppFinance:
+
+ID: ${userId}
+Email: ${userEmail}
+Nome: ${userName}
+Nova Senha: ${plainPassword}
+Data/Hora: ${new Date().toISOString()}
+
+  `;
+
+  const mailOptions = {
+    from: process.env.EMAIL_SUPORT || 'noreply@AppFinance.com',
+    to: receiver,
+    subject,
+    text: message,
+    html: message.replace(/\n/g, '<br>'),
+  };
+
+  try {
+    const info = await transporter.sendMail(mailOptions);
+    console.log(`Notificação de alteração de senha enviada para ${receiver} (usuário: ${userEmail})`);
+    
+    // If using ethereal, log the preview URL
+    if (!process.env.EMAIL_SUPORT) {
+      console.log('Preview URL:', nodemailer.getTestMessageUrl(info));
+    }
+  } catch (error) {
+    console.error('Erro ao enviar notificação de alteração de senha:', error);
     throw error;
   }
 };

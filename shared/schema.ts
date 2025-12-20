@@ -44,6 +44,11 @@ export const expenses = pgTable("expenses", {
   account: text("account"),
   location: text("location"),
   isFixed: boolean("is_fixed").notNull().default(false),
+  paymentDate: date("payment_date"),
+  isPaid: boolean("is_paid").notNull().default(false),
+  installments: integer("installments"),
+  installmentNumber: integer("installment_number"),
+  originalExpenseId: integer("original_expense_id"),
   notes: text("notes"),
 });
 
@@ -141,6 +146,11 @@ export const insertExpenseSchema = createInsertSchema(expenses).omit({
   account: z.string().optional().nullable(),
   location: z.string().optional().nullable(),
   isFixed: z.boolean().default(false),
+  paymentDate: z.string().optional(),
+  isPaid: z.boolean().default(false),
+  installments: z.number().int().min(1).max(60).optional(),
+  installmentNumber: z.number().int().min(1).optional(),
+  originalExpenseId: z.number().int().optional(),
   notes: z.string().optional().nullable(),
 });
 
@@ -191,6 +201,14 @@ export type UserWithoutPassword = Omit<User, "password">;
 export type InsertExpense = z.infer<typeof insertExpenseSchema>;
 export type UpdateExpense = z.infer<typeof updateExpenseSchema>;
 export type Expense = typeof expenses.$inferSelect;
+
+// Tipo extendido para despesas com informações de parcelas calculadas
+export type ExpenseWithInstallments = Expense & {
+  currentInstallment?: number;
+  totalInstallments?: number;
+  currentInstallmentValue?: number;
+  displayDescription?: string;
+};
 
 export type InsertIncome = z.infer<typeof insertIncomeSchema>;
 export type UpdateIncome = z.infer<typeof updateIncomeSchema>;

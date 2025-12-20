@@ -14,6 +14,8 @@ import {
   Receipt,
   Loader2,
   X,
+  Check,
+  CalendarIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -43,14 +45,22 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth";
 import { ExpenseForm } from "@/components/expense-form";
-import type { Expense } from "@shared/schema";
+import { cn } from "@/lib/utils";
+import type { ExpenseWithInstallments } from "@shared/schema";
 import { CATEGORIES } from "@shared/schema";
 
 interface ExpensesResponse {
-  expenses: Expense[];
+  expenses: ExpenseWithInstallments[];
   total: number;
   page: number;
   limit: number;
@@ -69,10 +79,12 @@ function ExpenseRow({
   expense,
   onEdit,
   onDelete,
+  onMarkPaid,
 }: {
-  expense: Expense;
+  expense: ExpenseWithInstallments;
   onEdit: () => void;
   onDelete: () => void;
+  onMarkPaid: () => void;
 }) {
   return (
     <div
@@ -86,7 +98,7 @@ function ExpenseRow({
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <span className="font-medium" data-testid={`text-expense-description-${expense.id}`}>
-              {expense.description}
+              {expense.displayDescription || expense.description}
             </span>
             <Badge variant="secondary" className="text-xs">
               {expense.category}
@@ -96,10 +108,16 @@ function ExpenseRow({
                 Fixo
               </Badge>
             )}
+            {expense.installments && expense.installments > 1 && (
+              <Badge variant="default" className="text-xs">
+                {expense.currentInstallment}/{expense.totalInstallments}x
+              </Badge>
+            )}
           </div>
           <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
             <span>{(() => {
-              const [year, month, day] = expense.date.split('-');
+              const dateToShow = expense.isPaid && expense.paymentDate ? expense.paymentDate : expense.date;
+              const [year, month, day] = dateToShow.split('-');
               return `${day}/${month}/${year}`;
             })()}</span>
             <span>-</span>
@@ -121,12 +139,38 @@ function ExpenseRow({
               {expense.quantity}x {formatCurrency(expense.unitValue)}
             </div>
           )}
+          {expense.installments && expense.installments > 1 && (
+            <div className="text-xs text-muted-foreground">
+              Parcela {expense.currentInstallment} de {expense.totalInstallments}
+            </div>
+          )}
           <div className="font-mono font-semibold" data-testid={`text-expense-total-${expense.id}`}>
-            {formatCurrency(expense.totalValue)}
+            {expense.installments && expense.installments > 1 
+              ? formatCurrency(expense.currentInstallmentValue || 0)
+              : formatCurrency(expense.totalValue)
+            }
           </div>
         </div>
 
         <div className="flex items-center gap-1">
+          {expense.isFixed && expense.isPaid ? (
+            <Badge variant="default" className="bg-green-100 text-green-800 hover:bg-green-100">
+              Pago
+            </Badge>
+          ) : expense.isFixed && !expense.isPaid ? (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onMarkPaid}
+              className="text-green-600 hover:text-green-700 hover:bg-green-50 h-8 px-2"
+              title="Marcar como pago"
+              data-testid={`button-mark-paid-expense-${expense.id}`}
+            >
+              <Plus className="h-3 w-3 mr-1" />
+              <span className="hidden sm:inline">Data Pagamento</span>
+              <span className="sm:hidden">Data Pag.</span>
+            </Button>
+          ) : null}
           <Button
             variant="ghost"
             size="icon"
@@ -153,10 +197,12 @@ function ExpenseCard({
   expense,
   onEdit,
   onDelete,
+  onMarkPaid,
 }: {
   expense: Expense;
   onEdit: () => void;
   onDelete: () => void;
+  onMarkPaid: () => void;
 }) {
   return (
     <Card data-testid={`card-expense-${expense.id}`}>
@@ -192,6 +238,23 @@ function ExpenseCard({
             <span>{expense.paymentMethod}</span>
           </div>
           <div className="flex items-center gap-1">
+            {expense.isFixed && expense.isPaid ? (
+              <Badge variant="default" className="bg-green-100 text-green-800 hover:bg-green-100">
+                Pago
+              </Badge>
+            ) : expense.isFixed && !expense.isPaid ? (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={onMarkPaid}
+                className="text-green-600 hover:text-green-700 hover:bg-green-50 h-8 px-2"
+                title="Marcar como pago"
+              >
+                <Plus className="h-3 w-3 mr-1" />
+                <span className="hidden sm:inline">Data Pagamento</span>
+                <span className="sm:hidden">Data Pag.</span>
+              </Button>
+            ) : null}
             <Button variant="ghost" size="icon" onClick={onEdit}>
               <Edit2 className="h-4 w-4" />
             </Button>
@@ -212,14 +275,17 @@ export default function ExpensesPage() {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string>("");
+  const [isFixedFilter, setIsFixedFilter] = useState<boolean>(false);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
   const [deletingExpense, setDeletingExpense] = useState<Expense | null>(null);
+  const [markingPaidExpense, setMarkingPaidExpense] = useState<Expense | null>(null);
+  const [paymentDate, setPaymentDate] = useState<Date | undefined>(undefined);
 
   const limit = 10;
 
-  const { data, isLoading, isFetching } = useQuery<ExpensesResponse>({
-    queryKey: ["/api/expenses", { page, search, category: categoryFilter, limit, userId: user?.id }],
+  const { data, isLoading, isFetching, refetch } = useQuery<ExpensesResponse>({
+    queryKey: ["/api/expenses", { page, search, category: categoryFilter, isFixed: isFixedFilter, limit, userId: user?.id }],
     queryFn: async () => {
       const token = await getAccessToken();
       const params = new URLSearchParams({
@@ -228,12 +294,14 @@ export default function ExpensesPage() {
       });
       if (search) params.set("search", search);
       if (categoryFilter) params.set("category", categoryFilter);
+      if (isFixedFilter) params.set("fixed", "true");
 
       const response = await fetch(`/api/expenses?${params}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!response.ok) throw new Error("Failed to fetch expenses");
-      return response.json();
+      const result = await response.json();
+      return result;
     },
     enabled: !!user,
   });
@@ -255,12 +323,53 @@ export default function ExpensesPage() {
         description: "A despesa foi removida com sucesso.",
       });
       setDeletingExpense(null);
+      // Limpar editingExpense se a despesa deletada era a que estava sendo editada
+      if (editingExpense && editingExpense.id === deletingExpense?.id) {
+        setEditingExpense(null);
+        setIsFormOpen(false);
+      }
     },
     onError: () => {
       toast({
         variant: "destructive",
         title: "Erro",
         description: "Não foi possível excluir a despesa.",
+      });
+    },
+  });
+
+  const markPaidMutation = useMutation({
+    mutationFn: async ({ id, paymentDate }: { id: string; paymentDate: Date }) => {
+      const token = await getAccessToken();
+      const response = await fetch(`/api/expenses/${id}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          isPaid: true,
+          paymentDate: `${paymentDate.getFullYear()}-${String(paymentDate.getMonth() + 1).padStart(2, '0')}-${String(paymentDate.getDate()).padStart(2, '0')}T12:00:00`,
+        }),
+      });
+      if (!response.ok) throw new Error("Failed to mark expense as paid");
+      return response.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/expenses"], exact: false });
+      queryClient.invalidateQueries({ queryKey: ["/api/expenses/stats"], exact: false });
+      toast({
+        title: "Despesa marcada como paga",
+        description: "A despesa foi atualizada com sucesso.",
+      });
+      setMarkingPaidExpense(null);
+      setPaymentDate(undefined);
+    },
+    onError: (error) => {
+      toast({
+        variant: "destructive",
+        title: "Erro",
+        description: "Não foi possível marcar a despesa como paga.",
       });
     },
   });
@@ -283,13 +392,39 @@ export default function ExpensesPage() {
     queryClient.invalidateQueries({ queryKey: ["/api/expenses/stats"] });
   };
 
+  const handleOpenMarkPaid = (expense: Expense) => {
+    setMarkingPaidExpense(expense);
+    // Para despesas fixas, sempre preenche com a data atual
+    if (expense.isFixed) {
+      setPaymentDate(new Date());
+    } else {
+      setPaymentDate(undefined);
+    }
+  };
+
+  const handleCloseMarkPaid = () => {
+    setMarkingPaidExpense(null);
+    setPaymentDate(undefined);
+  };
+
+  const handleMarkPaid = () => {
+    if (markingPaidExpense) {
+      const dateToUse = paymentDate || new Date();
+      markPaidMutation.mutate({
+        id: markingPaidExpense.id.toString(),
+        paymentDate: dateToUse,
+      });
+    }
+  };
+
   const clearFilters = () => {
     setSearch("");
     setCategoryFilter("");
+    setIsFixedFilter(false);
     setPage(1);
   };
 
-  const hasFilters = search || categoryFilter;
+  const hasFilters = search || categoryFilter || isFixedFilter;
 
   return (
     <div className="flex flex-col gap-6 p-6">
@@ -345,6 +480,16 @@ export default function ExpensesPage() {
                   ))}
                 </SelectContent>
               </Select>
+              <div className="flex items-center gap-2">
+                <label className="text-sm font-medium">Apenas Fixas</label>
+                <Switch
+                  checked={isFixedFilter}
+                  onCheckedChange={(checked) => {
+                    setIsFixedFilter(checked);
+                    setPage(1);
+                  }}
+                />
+              </div>
               {hasFilters && (
                 <Button variant="ghost" size="sm" onClick={clearFilters}>
                   <X className="mr-1 h-4 w-4" />
@@ -373,6 +518,7 @@ export default function ExpensesPage() {
                     expense={expense}
                     onEdit={() => handleOpenForm(expense)}
                     onDelete={() => setDeletingExpense(expense)}
+                    onMarkPaid={() => handleOpenMarkPaid(expense)}
                   />
                 ))}
               </div>
@@ -383,6 +529,7 @@ export default function ExpensesPage() {
                     expense={expense}
                     onEdit={() => handleOpenForm(expense)}
                     onDelete={() => setDeletingExpense(expense)}
+                    onMarkPaid={() => handleOpenMarkPaid(expense)}
                   />
                 ))}
               </div>
@@ -447,6 +594,74 @@ export default function ExpensesPage() {
             onSuccess={handleFormSuccess}
             onCancel={handleCloseForm}
           />
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={!!markingPaidExpense}
+        onOpenChange={(open) => !open && handleCloseMarkPaid()}
+      >
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Marcar como Pago</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <label className="text-sm font-medium">Despesa</label>
+              <p className="text-sm text-muted-foreground">
+                {markingPaidExpense?.description}
+              </p>
+            </div>
+            <div className="grid gap-2">
+              <label className="text-sm font-medium">Data de Pagamento</label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      "w-full justify-start text-left font-normal",
+                      !paymentDate && "text-muted-foreground"
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {paymentDate ? (
+                      format(paymentDate, "dd/MM/yyyy")
+                    ) : (
+                      <span>Selecione a data</span>
+                    )}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={paymentDate}
+                    onSelect={(date) => {
+                      if (date) setPaymentDate(date);
+                    }}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+          </div>
+          <div className="flex justify-end gap-3">
+            <Button
+              variant="outline"
+              onClick={handleCloseMarkPaid}
+              disabled={markPaidMutation.isPending}
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleMarkPaid}
+              disabled={(markingPaidExpense?.isFixed && !paymentDate) || markPaidMutation.isPending}
+            >
+              {markPaidMutation.isPending && (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              )}
+              Marcar como Pago
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
 

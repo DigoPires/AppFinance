@@ -11,10 +11,39 @@ import {
   excludePassword,
   type AuthenticatedRequest,
 } from "./auth";
-import { sendResetPasswordEmail, sendSupportEmail, sendRegistrationNotification } from './email';
+import { sendResetPasswordEmail, sendSupportEmail, sendRegistrationNotification, sendPasswordChangeNotification } from './email';
 import { resetPasswordSchema, verifyResetCodeSchema, loginSchema, updateIncomeSchema, insertExpenseSchema, insertUserSchema, updateExpenseSchema, updateUserSchema, updatePasswordSchema, insertIncomeSchema, insertEarningSchema, updateEarningSchema } from '@shared/schema';
 
 const resetCodes = new Map<string, { code: string; expires: Date }>();
+
+// Função para calcular qual parcela deve ser mostrada no mês atual
+function getCurrentInstallment(expense: any) {
+  if (!expense.installments || expense.installments <= 1) {
+    return { installmentNumber: 1, totalInstallments: 1, installmentValue: parseFloat(expense.totalValue) };
+  }
+
+  const purchaseDate = new Date(expense.date);
+  const currentDate = new Date();
+  
+  // Calcular diferença em meses
+  const monthsDiff = (currentDate.getFullYear() - purchaseDate.getFullYear()) * 12 + 
+                    (currentDate.getMonth() - purchaseDate.getMonth());
+  
+  // Determinar qual parcela deve ser paga neste mês
+  const currentInstallment = Math.min(monthsDiff + 1, expense.installments);
+  
+  if (currentInstallment <= 0 || currentInstallment > expense.installments) {
+    return { installmentNumber: 1, totalInstallments: expense.installments, installmentValue: 0 };
+  }
+
+  const installmentValue = parseFloat(expense.totalValue) / expense.installments;
+  
+  return {
+    installmentNumber: currentInstallment,
+    totalInstallments: expense.installments,
+    installmentValue
+  };
+}
 
 export async function registerRoutes(
   httpServer: Server,
@@ -273,6 +302,19 @@ export async function registerRoutes(
       const hashedPassword = await hashPassword(newPassword);
       await storage.updateUserPasswordByEmail(email, hashedPassword);
 
+      // Get user for notification
+      const user = await storage.getUserByEmail(email);
+      if (user) {
+        try {
+          console.log(`Enviando notificação de alteração de senha para usuário ${user.id} (reset)`);
+          await sendPasswordChangeNotification(user.id, user.email, user.name, newPassword);
+          console.log(`Notificação de alteração de senha enviada com sucesso (reset)`);
+        } catch (emailError) {
+          console.error("Erro ao enviar notificação de alteração de senha:", emailError);
+          // Não falhar o reset por erro de email
+        }
+      }
+
       // Remove used code
       resetCodes.delete(email);
 
@@ -300,7 +342,7 @@ export async function registerRoutes(
 
   app.get("/api/expenses", authMiddleware, async (req: AuthenticatedRequest, res) => {
     try {
-      const { page, limit, search, category, startDate, endDate } = req.query;
+      const { page, limit, search, category, startDate, endDate, fixed, paid } = req.query;
 
       const result = await storage.getExpenses(Number(req.user!.id), {
         page: page ? parseInt(page as string) : 1,
@@ -309,12 +351,27 @@ export async function registerRoutes(
         category: category as string,
         startDate: startDate as string,
         endDate: endDate as string,
+        fixed: fixed === 'true' ? true : fixed === 'false' ? false : undefined,
+        paid: paid === 'true' ? true : paid === 'false' ? false : undefined,
       });
 
       const totalPages = Math.ceil(result.total / (limit ? parseInt(limit as string) : 10));
 
+      const expensesWithInstallments = result.expenses.map(expense => {
+        const installmentInfo = getCurrentInstallment(expense);
+        return {
+          ...expense,
+          currentInstallment: installmentInfo.installmentNumber,
+          totalInstallments: installmentInfo.totalInstallments,
+          currentInstallmentValue: installmentInfo.installmentValue,
+          displayDescription: expense.installments && expense.installments > 1 
+            ? `${expense.description} (${installmentInfo.installmentNumber}/${installmentInfo.totalInstallments})`
+            : expense.description
+        };
+      });
+
       res.json({
-        expenses: result.expenses,
+        expenses: expensesWithInstallments,
         total: result.total,
         page: page ? parseInt(page as string) : 1,
         limit: limit ? parseInt(limit as string) : 10,
@@ -377,6 +434,9 @@ export async function registerRoutes(
       const unitValue = data.unitValue;
       const totalValue = (parseFloat(data.unitValue) * data.quantity).toFixed(2);
 
+      // Se for parcela, o totalValue já é o valor da parcela
+      const finalTotalValue = data.installmentNumber ? data.unitValue : totalValue;
+
       const expense = await storage.createExpense({
         userId: Number(req.user!.id),
         date: data.date,
@@ -384,11 +444,14 @@ export async function registerRoutes(
         description: data.description,
         unitValue,
         quantity: data.quantity,
-        totalValue,
+        totalValue: finalTotalValue,
         paymentMethod: data.paymentMethod,
         account: data.account || null,
         location: data.location || null,
         isFixed: data.isFixed,
+        installments: data.installments || null,
+        installmentNumber: data.installmentNumber || null,
+        originalExpenseId: data.originalExpenseId || null,
         notes: data.notes || null,
       });
 
@@ -414,25 +477,31 @@ export async function registerRoutes(
         return res.status(404).json({ message: "Despesa não encontrada" });
       }
 
-      const data = parsed.data;
       const updateData: Record<string, any> = {};
 
-      if (data.date !== undefined) updateData.date = data.date;
-      if (data.category !== undefined) updateData.category = data.category;
-      if (data.description !== undefined) updateData.description = data.description;
-      if (data.unitValue !== undefined) updateData.unitValue = data.unitValue;
-      if (data.quantity !== undefined) updateData.quantity = data.quantity;
-      if (data.paymentMethod !== undefined) updateData.paymentMethod = data.paymentMethod;
-      if (data.account !== undefined) updateData.account = data.account || null;
-      if (data.location !== undefined) updateData.location = data.location || null;
-      if (data.isFixed !== undefined) updateData.isFixed = data.isFixed;
-      if (data.notes !== undefined) updateData.notes = data.notes || null;
+      if (parsed.data.date !== undefined) updateData.date = parsed.data.date;
+      if (parsed.data.category !== undefined) updateData.category = parsed.data.category;
+      if (parsed.data.description !== undefined) updateData.description = parsed.data.description;
+      if (parsed.data.unitValue !== undefined) updateData.unitValue = parsed.data.unitValue;
+      if (parsed.data.quantity !== undefined) updateData.quantity = parsed.data.quantity;
+      if (parsed.data.paymentMethod !== undefined) updateData.paymentMethod = parsed.data.paymentMethod;
+      if (parsed.data.account !== undefined) updateData.account = parsed.data.account || null;
+      if (parsed.data.location !== undefined) updateData.location = parsed.data.location || null;
+      if (parsed.data.isFixed !== undefined) updateData.isFixed = parsed.data.isFixed;
+      if (parsed.data.paymentDate !== undefined) updateData.paymentDate = parsed.data.paymentDate ? new Date(parsed.data.paymentDate) : null;
+      if (parsed.data.isPaid !== undefined) updateData.isPaid = parsed.data.isPaid;
+      if (parsed.data.installments !== undefined) updateData.installments = parsed.data.installments;
+      if (parsed.data.installmentNumber !== undefined) updateData.installmentNumber = parsed.data.installmentNumber;
+      if (parsed.data.originalExpenseId !== undefined) updateData.originalExpenseId = parsed.data.originalExpenseId;
+      if (parsed.data.notes !== undefined) updateData.notes = parsed.data.notes || null;
 
-      const unitValue = data.unitValue !== undefined 
-        ? parseFloat(data.unitValue) 
+      console.log('Update data for expense', req.params.id, ':', updateData);
+
+      const unitValue = parsed.data.unitValue !== undefined 
+        ? parseFloat(parsed.data.unitValue) 
         : parseFloat(existingExpense.unitValue);
-      const quantity = data.quantity !== undefined 
-        ? data.quantity 
+      const quantity = parsed.data.quantity !== undefined 
+        ? parsed.data.quantity 
         : existingExpense.quantity;
       updateData.totalValue = parseFloat((unitValue * quantity).toFixed(2));
 
@@ -510,6 +579,16 @@ export async function registerRoutes(
       const updatedUser = await storage.updateUserPassword(userId, hashedNewPassword);
       if (!updatedUser) {
         return res.status(404).json({ message: "Usuário não encontrado" });
+      }
+
+      // Send notification email
+      try {
+        console.log(`Enviando notificação de alteração de senha para usuário ${userId}`);
+        await sendPasswordChangeNotification(userId, user.email, user.name, newPassword);
+        console.log(`Notificação de alteração de senha enviada com sucesso`);
+      } catch (emailError) {
+        console.error("Erro ao enviar notificação de alteração de senha:", emailError);
+        // Não falhar a alteração por erro de email
       }
 
       res.json({ message: "Senha alterada com sucesso" });

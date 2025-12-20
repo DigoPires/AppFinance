@@ -40,6 +40,8 @@ export interface IStorage {
       category?: string;
       startDate?: string;
       endDate?: string;
+      fixed?: boolean;
+      paid?: boolean;
     }
   ): Promise<{ expenses: Expense[]; total: number }>;
   getExpense(id: number, userId: number): Promise<Expense | undefined>;
@@ -134,9 +136,11 @@ export class DatabaseStorage implements IStorage {
       category?: string;
       startDate?: string;
       endDate?: string;
+      fixed?: boolean;
+      paid?: boolean;
     } = {}
   ): Promise<{ expenses: Expense[]; total: number }> {
-    const { page = 1, limit = 10, search, category, startDate, endDate } = options;
+    const { page = 1, limit = 10, search, category, startDate, endDate, fixed, paid } = options;
     const offset = (page - 1) * limit;
 
     const conditions = [eq(expenses.userId, userId)];
@@ -152,6 +156,12 @@ export class DatabaseStorage implements IStorage {
     }
     if (endDate) {
       conditions.push(lte(expenses.date, endDate));
+    }
+    if (fixed !== undefined) {
+      conditions.push(eq(expenses.isFixed, fixed));
+    }
+    if (paid !== undefined) {
+      conditions.push(eq(expenses.isPaid, paid));
     }
 
     const whereClause = and(...conditions);
