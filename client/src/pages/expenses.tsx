@@ -310,7 +310,7 @@ export default function ExpensesPage() {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string>("");
-  const [isFixedFilter, setIsFixedFilter] = useState<boolean>(false);
+  const [isFixedFilter, setIsFixedFilter] = useState<boolean | undefined>(undefined);
   const [sortBy, setSortBy] = useState<string>("date_desc");
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
@@ -333,7 +333,7 @@ export default function ExpensesPage() {
       });
       if (search) params.set("search", search);
       if (categoryFilter) params.set("category", categoryFilter);
-      if (isFixedFilter) params.set("fixed", "true");
+      if (isFixedFilter !== undefined) params.set("fixed", isFixedFilter ? "true" : "false");
       if (sortBy) params.set("sortBy", sortBy);
 
       const response = await fetch(`/api/expenses?${params}`, {
@@ -466,12 +466,11 @@ export default function ExpensesPage() {
   const clearFilters = () => {
     setSearch("");
     setCategoryFilter("");
-    setIsFixedFilter(false);
     setSortBy("date_desc");
     setPage(1);
   };
 
-  const hasFilters = search || categoryFilter || isFixedFilter;
+  const hasFilters = search || categoryFilter;
 
   return (
     <div className="flex flex-col gap-6 p-6">
@@ -546,14 +545,29 @@ export default function ExpensesPage() {
                 </SelectContent>
               </Select>
               <div className="flex items-center gap-2">
-                <label className="text-sm font-medium">Apenas Fixas</label>
-                <Switch
-                  checked={isFixedFilter}
-                  onCheckedChange={(checked) => {
-                    setIsFixedFilter(checked);
-                    setPage(1);
-                  }}
-                />
+                <label className="text-sm font-medium">Tipo:</label>
+                <div className="flex gap-1">
+                  <Button
+                    variant={isFixedFilter === true ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => {
+                      setIsFixedFilter(prev => prev === true ? undefined : true);
+                      setPage(1);
+                    }}
+                  >
+                    Fixo
+                  </Button>
+                  <Button
+                    variant={isFixedFilter === false ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => {
+                      setIsFixedFilter(prev => prev === false ? undefined : false);
+                      setPage(1);
+                    }}
+                  >
+                    Não Fixo
+                  </Button>
+                </div>
               </div>
               {hasFilters && (
                 <Button variant="ghost" size="sm" onClick={clearFilters}>

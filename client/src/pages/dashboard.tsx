@@ -261,7 +261,7 @@ export default function Dashboard() {
     paymentMethod: [] as string[],
     account: [] as string[],
     location: [] as string[],
-    isFixed: false,
+    isFixed: undefined,
     notes: '',
     dateFilter: {
       mode: 'all' as 'all' | 'year' | 'month' | 'range',
@@ -432,7 +432,7 @@ export default function Dashboard() {
       (filters.paymentMethod.length === 0 || filters.paymentMethod.includes(expense.paymentMethod)) &&
       (filters.account.length === 0 || (expense.account && filters.account.includes(expense.account))) &&
       (filters.location.length === 0 || (expense.location && filters.location.includes(expense.location))) &&
-      (!filters.isFixed || expense.isFixed === filters.isFixed) &&
+      (filters.isFixed === undefined || expense.isFixed === filters.isFixed) &&
       (!filters.notes || (expense.notes && normalizeText(expense.notes).includes(normalizeText(filters.notes)))) &&
       dateMatch
     );
@@ -462,7 +462,7 @@ export default function Dashboard() {
       (filters.paymentMethod.length === 0 || filters.paymentMethod.includes(expense.paymentMethod)) &&
       (filters.account.length === 0 || (expense.account && filters.account.includes(expense.account))) &&
       (filters.location.length === 0 || (expense.location && filters.location.includes(expense.location))) &&
-      (!filters.isFixed || expense.isFixed === filters.isFixed) &&
+      (filters.isFixed === undefined || expense.isFixed === filters.isFixed) &&
       (!filters.notes || (expense.notes && normalizeText(expense.notes).includes(normalizeText(filters.notes)))) &&
       dateMatch &&
       // Incluir apenas despesas não fixas OU despesas fixas pagas
@@ -1169,22 +1169,34 @@ export default function Dashboard() {
             </div>
           </div>
               <div className={`flex flex-col gap-2 ${filtersOpen ? 'animate-in fade-in slide-in-from-left-2 duration-400 fill-mode-both' : 'animate-out fade-out slide-out-to-left-2 duration-300 fill-mode-both'}`} style={{ animationDelay: filtersOpen ? '150ms' : '200ms' }}>
-                <label className="text-sm font-medium">Despesa Fixa</label>
-                <div className="flex items-center h-9 md:ml-6">
-                  <Switch
-                    checked={filters.isFixed}
-                    onCheckedChange={(checked) => setFilters(prev => ({ ...prev, isFixed: !!checked }))}
-                  />
+                <label className="text-sm font-medium">Tipo de Despesa</label>
+                <div className="flex gap-2">
+                  <Button
+                    variant={filters.isFixed === true ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setFilters(prev => ({ ...prev, isFixed: prev.isFixed === true ? undefined : true }))}
+                    className="flex-1"
+                  >
+                    Fixo
+                  </Button>
+                  <Button
+                    variant={filters.isFixed === false ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setFilters(prev => ({ ...prev, isFixed: prev.isFixed === false ? undefined : false }))}
+                    className="flex-1"
+                  >
+                    Não Fixo
+                  </Button>
                 </div>
               </div>
               <div className={`flex justify-end sm:col-span-1 md:col-span-2 lg:col-span-3 xl:col-span-4 2xl:col-span-1 2xl:ml-auto ${filtersOpen ? 'animate-in fade-in slide-in-from-bottom-2 duration-400 fill-mode-both' : 'animate-out fade-out slide-out-to-bottom-2 duration-300 fill-mode-both'}`} style={{ animationDelay: filtersOpen ? '400ms' : '0ms' }}>
-                <Button className="w-full sm:w-auto transition-all duration-200 hover:scale-105 hover:shadow-md" onClick={() => setFilters({
+                <Button className="w-full sm:w-auto transition-all duration-200 hover:scale-105 hover:shadow-md" onClick={() => setFilters(prev => ({
+                  ...prev,
                   category: [],
                   description: '',
                   paymentMethod: [],
                   account: [],
                   location: [],
-                  isFixed: false,
                   notes: '',
                   dateFilter: {
                     mode: 'all',
@@ -1193,7 +1205,7 @@ export default function Dashboard() {
                     from: '',
                     to: '',
                   },
-                })}>
+                }))}>
                   Limpar Filtros
                 </Button>
               </div>

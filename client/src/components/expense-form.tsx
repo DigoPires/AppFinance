@@ -539,21 +539,23 @@ export function ExpenseForm({ expense, initialData, onSuccess, onCancel }: Expen
           control={form.control}
           name="isPaid"
           render={({ field }) => (
-            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 sm:p-4">
-              <div className="space-y-0.5">
-                <FormLabel className="text-sm sm:text-base">Pago</FormLabel>
-                <p className="text-xs sm:text-sm text-muted-foreground">
-                  Marque se esta despesa já foi paga
-                </p>
-              </div>
-              <FormControl>
-                <Switch
-                  checked={field.value}
-                  onCheckedChange={(checked) => field.onChange(Boolean(checked))}
-                  data-testid="switch-is-paid"
-                />
-              </FormControl>
-            </FormItem>
+            isFixed ? (
+              <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 sm:p-4">
+                <div className="space-y-0.5">
+                  <FormLabel className="text-sm sm:text-base">Pago</FormLabel>
+                  <p className="text-xs sm:text-sm text-muted-foreground">
+                    Marque se esta despesa já foi paga
+                  </p>
+                </div>
+                <FormControl>
+                  <Switch
+                    checked={field.value}
+                    onCheckedChange={(checked) => field.onChange(Boolean(checked))}
+                    data-testid="switch-is-paid"
+                  />
+                </FormControl>
+              </FormItem>
+            ) : null
           )}
         />
 
