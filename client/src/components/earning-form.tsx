@@ -24,6 +24,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth";
 import { cn } from "@/lib/utils";
+import { queryClient } from "@/lib/queryClient";
 import { insertEarningSchema, updateEarningSchema, type Earning } from "@shared/schema";
 
 const formSchema = z.object({
@@ -43,22 +44,25 @@ type FormData = z.infer<typeof formSchema>;
 
 interface EarningFormProps {
   earning?: Earning | null;
+  initialData?: Earning | null;
   onSuccess: () => void;
   onCancel: () => void;
 }
 
-export function EarningForm({ earning, onSuccess, onCancel }: EarningFormProps) {
+export function EarningForm({ earning, initialData, onSuccess, onCancel }: EarningFormProps) {
   const { getAccessToken } = useAuth();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const dataSource = initialData || earning;
+
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      date: earning ? new Date(earning.date + 'T12:00:00') : new Date(),
-      description: earning?.description || "",
-      amount: earning ? String(earning.amount).replace(".", ",") : "",
-      client: earning?.client || "",
+      date: dataSource ? new Date(dataSource.date + 'T12:00:00') : new Date(),
+      description: dataSource?.description || "",
+      amount: dataSource ? String(dataSource.amount).replace(".", ",") : "",
+      client: dataSource?.client || "",
     },
   });
 
@@ -85,6 +89,8 @@ export function EarningForm({ earning, onSuccess, onCancel }: EarningFormProps) 
       return response.json();
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["earnings"], refetchType: "active" });
+      queryClient.invalidateQueries({ queryKey: ["/api/expenses/stats"] });
       toast({
         title: "Receita criada",
         description: "A receita foi adicionada com sucesso.",
@@ -123,6 +129,8 @@ export function EarningForm({ earning, onSuccess, onCancel }: EarningFormProps) 
       return response.json();
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["earnings"], refetchType: "active" });
+      queryClient.invalidateQueries({ queryKey: ["/api/expenses/stats"] });
       toast({
         title: "Receita atualizada",
         description: "A receita foi atualizada com sucesso.",

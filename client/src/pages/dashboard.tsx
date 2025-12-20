@@ -114,21 +114,21 @@ function StatCard({
   loading?: boolean;
 }) {
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between gap-2 pb-2">
-        <CardTitle className="text-sm font-medium text-muted-foreground">
+    <Card className="min-h-[100px]">
+      <CardHeader className="flex flex-row items-center justify-between gap-2 pb-1">
+        <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground truncate">
           {title}
         </CardTitle>
-        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10">
-          <Icon className="h-5 w-5 text-primary" />
+        <div className="flex h-7 w-7 sm:h-9 sm:w-9 items-center justify-center rounded-lg bg-primary/10 flex-shrink-0">
+          <Icon className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
         </div>
       </CardHeader>
-      <CardContent>
+      <CardContent className="pt-0">
         {loading ? (
-          <Skeleton className="h-8 w-32" />
+          <Skeleton className="h-6 sm:h-8 w-24 sm:w-32" />
         ) : (
-          <div className="flex items-baseline gap-2">
-            <span className="text-2xl font-bold font-mono" data-testid={`text-stat-${title.toLowerCase().replace(/\s+/g, "-")}`}>
+          <div className="flex items-baseline gap-1 sm:gap-2">
+            <span className="text-lg sm:text-2xl font-bold font-mono truncate" data-testid={`text-stat-${title.toLowerCase().replace(/\s+/g, "-")}`}>
               {value}
             </span>
             {trend && (
@@ -143,7 +143,9 @@ function StatCard({
           </div>
         )}
         {description && (
-          <p className="mt-1 text-xs text-muted-foreground">{description}</p>
+          <p className="mt-1 text-xs text-muted-foreground line-clamp-2">
+            {description}
+          </p>
         )}
       </CardContent>
     </Card>
@@ -165,22 +167,22 @@ function CategoryCard({
   const IconComponent = categoryIcons[category] || Receipt;
   
   return (
-    <div className="flex items-center gap-4 rounded-lg border bg-card p-4">
-      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-        <IconComponent className="h-5 w-5 text-primary" />
+    <div className="flex items-center gap-3 sm:gap-4 rounded-lg border bg-card p-3 sm:p-4">
+      <div className="flex h-8 w-8 sm:h-10 sm:w-10 items-center justify-center rounded-lg bg-primary/10 flex-shrink-0">
+        <IconComponent className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
       </div>
       <div className="flex-1 min-w-0">
         <div className="flex items-center justify-between gap-2">
-          <span className="text-sm font-medium truncate">{category}</span>
+          <span className="text-xs sm:text-sm font-medium truncate">{category}</span>
           {loading ? (
-            <Skeleton className="h-4 w-20" />
+            <Skeleton className="h-3 sm:h-4 w-16 sm:w-20" />
           ) : (
-            <span className="text-sm font-mono font-semibold text-muted-foreground">
+            <span className="text-xs sm:text-sm font-mono font-semibold text-muted-foreground">
               {formatCurrency(amount)}
             </span>
           )}
         </div>
-        <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-secondary">
+        <div className="mt-2 h-1.5 sm:h-2 w-full overflow-hidden rounded-full bg-secondary">
           <div
             className="h-full rounded-full bg-primary transition-all duration-500"
             style={{ width: `${Math.min(percentage, 100)}%` }}
@@ -200,17 +202,17 @@ function RecentExpenseItem({ expense }: { expense: ExpenseWithInstallments }) {
   const shouldShowDate = !isPending;
 
   return (
-    <div className={`flex items-center justify-between gap-4 py-3 ${isPending ? 'opacity-75' : ''}`}>
-      <div className="flex items-center gap-3 min-w-0">
-        <div className={`flex h-9 w-9 items-center justify-center rounded-lg ${isPending ? 'bg-orange-100' : 'bg-primary/10'}`}>
-          <IconComponent className={`h-4 w-4 ${isPending ? 'text-orange-600' : 'text-primary'}`} />
+    <div className={`flex items-center justify-between gap-2 sm:gap-4 py-3 ${isPending ? 'opacity-75' : ''}`}>
+      <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+        <div className={`flex h-7 w-7 sm:h-9 sm:w-9 items-center justify-center rounded-lg flex-shrink-0 ${isPending ? 'bg-orange-100' : 'bg-primary/10'}`}>
+          <IconComponent className={`h-3 w-3 sm:h-4 sm:w-4 ${isPending ? 'text-orange-600' : 'text-primary'}`} />
         </div>
-        <div className="min-w-0">
-          <p className="truncate text-sm font-medium">
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-xs sm:text-sm font-medium">
             {expense.displayDescription || expense.description}
-            {isPending && <span className="ml-2 text-xs text-orange-600 font-medium">(Pendente)</span>}
+            {isPending && <span className="ml-1 sm:ml-2 text-xs text-orange-600 font-medium">(Pendente)</span>}
           </p>
-          <p className="text-xs text-muted-foreground">
+          <p className="text-xs text-muted-foreground truncate">
             {expense.category}
             {expense.installments && expense.installments > 1 && (
               <span className="ml-1">• {expense.currentInstallment}/{expense.totalInstallments}x</span>
@@ -218,14 +220,14 @@ function RecentExpenseItem({ expense }: { expense: ExpenseWithInstallments }) {
           </p>
         </div>
       </div>
-      <div className="text-right">
-        <p className="font-mono text-sm font-semibold">
+      <div className="text-right flex-shrink-0">
+        <p className="font-mono text-xs sm:text-sm font-semibold">
           {expense.installments && expense.installments > 1
             ? formatCurrency(expense.currentInstallmentValue || 0)
             : formatCurrency(Number(expense.totalValue))
           }
         </p>
-        <p className="text-xs text-muted-foreground">
+        <p className="text-xs text-muted-foreground hidden sm:block">
           {shouldShowDate ? (() => {
             const [year, month, day] = displayDate.split('-');
             return format(new Date(parseInt(year), parseInt(month) - 1, parseInt(day)), "dd MMM", { locale: ptBR });
@@ -273,7 +275,7 @@ export default function Dashboard() {
   });
 
   const { data: stats, isLoading: statsLoading } = useQuery<ExpenseStats>({
-    queryKey: ["/api/expenses/stats", user?.id],
+    queryKey: ["expenses-stats", { userId: user?.id }],
     queryFn: async () => {
       const token = await getAccessToken();
       const response = await fetch("/api/expenses/stats", {
@@ -286,7 +288,7 @@ export default function Dashboard() {
   });
 
   const { data: allExpenses, isLoading: allExpensesLoading } = useQuery<Expense[]>({
-    queryKey: ["/api/expenses", user?.id],
+    queryKey: ["expenses", { userId: user?.id, type: "dashboard" }],
     queryFn: async () => {
       const token = await getAccessToken();
       const response = await fetch("/api/expenses", {
@@ -300,7 +302,7 @@ export default function Dashboard() {
   });
 
   const { data: recentExpenses, isLoading: recentLoading } = useQuery<Expense[]>({
-    queryKey: ["/api/expenses", "recent", user?.id],
+    queryKey: ["expenses", { userId: user?.id, type: "recent" }],
     queryFn: async () => {
       const token = await getAccessToken();
       const response = await fetch("/api/expenses?limit=20", {
@@ -314,7 +316,7 @@ export default function Dashboard() {
   });
 
   const { data: pendingFixedExpenses, isLoading: pendingLoading } = useQuery<Expense[]>({
-    queryKey: ["/api/expenses", "pending-fixed", user?.id],
+    queryKey: ["expenses", { userId: user?.id, type: "pending-fixed" }],
     queryFn: async () => {
       const token = await getAccessToken();
       const response = await fetch("/api/expenses?fixed=true&paid=false", {
@@ -328,7 +330,7 @@ export default function Dashboard() {
   });
 
   const { data: incomes } = useQuery({
-    queryKey: ["/api/incomes", user?.id],
+    queryKey: ["incomes", { userId: user?.id }],
     queryFn: async () => {
       const token = await getAccessToken();
       const response = await fetch("/api/incomes", {
@@ -391,8 +393,8 @@ export default function Dashboard() {
       if (!response.ok) throw new Error("Failed to create income");
     }
     // Invalidate queries to refresh stats
-    queryClient.invalidateQueries({ queryKey: ["/api/expenses/stats", user?.id] });
-    queryClient.invalidateQueries({ queryKey: ["/api/incomes", user?.id] });
+    queryClient.invalidateQueries({ queryKey: ["expenses-stats"], refetchType: "active" });
+    queryClient.invalidateQueries({ queryKey: ["incomes"], refetchType: "active" });
     setIsEditing(false);
     setTempValue('');
   };
@@ -542,10 +544,10 @@ export default function Dashboard() {
     <div className="flex flex-col gap-4 p-3 sm:gap-6 sm:p-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold" data-testid="text-dashboard-title">
+          <h1 className="text-xl sm:text-2xl font-bold" data-testid="text-dashboard-title">
             Dashboard
           </h1>
-          <p className="text-muted-foreground">
+          <p className="text-sm text-muted-foreground">
             Visão geral das suas finanças
           </p>
         </div>
@@ -1201,7 +1203,7 @@ export default function Dashboard() {
         </CollapsibleContent>
       </Collapsible>
 
-      <div className="grid gap-3 sm:gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+      <div className="grid gap-3 sm:gap-4 grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
         <StatCard
           title="Total de Despesas"
           value={formatCurrency(filteredStats?.totalSpent || 0)}
@@ -1252,7 +1254,7 @@ export default function Dashboard() {
       <div className="grid gap-4 sm:gap-6 lg:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">Por Categoria</CardTitle>
+            <CardTitle className="text-base sm:text-lg">Por Categoria</CardTitle>
           </CardHeader>
           <CardContent className="flex flex-col gap-3">
             {allExpensesLoading || statsLoading ? (
@@ -1281,7 +1283,7 @@ export default function Dashboard() {
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">Despesas</CardTitle>
+            <CardTitle className="text-base sm:text-lg">Despesas</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 xl:grid-cols-1 gap-4 sm:gap-6">

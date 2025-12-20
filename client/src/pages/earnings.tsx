@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -15,6 +15,8 @@ import {
   Loader2,
   X,
   TrendingUp,
+  Copy,
+  ArrowUpDown,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -75,10 +77,12 @@ function EarningCard({
   earning,
   onEdit,
   onDelete,
+  onDuplicate,
 }: {
   earning: Earning;
   onEdit: () => void;
   onDelete: () => void;
+  onDuplicate: () => void;
 }) {
   return (
     <Card>
@@ -109,6 +113,9 @@ function EarningCard({
             })()}</span>
           </div>
           <div className="flex items-center gap-1">
+            <Button variant="ghost" size="icon" onClick={onDuplicate} title="Duplicar receita">
+              <Copy className="h-4 w-4" />
+            </Button>
             <Button variant="ghost" size="icon" onClick={onEdit}>
               <Edit2 className="h-4 w-4" />
             </Button>
@@ -126,10 +133,12 @@ function EarningRow({
   earning,
   onEdit,
   onDelete,
+  onDuplicate,
 }: {
   earning: Earning;
   onEdit: () => void;
   onDelete: () => void;
+  onDuplicate: () => void;
 }) {
   return (
     <div className="flex flex-col gap-3 border-b py-4 last:border-b-0 sm:flex-row sm:items-center sm:justify-between">
@@ -159,6 +168,9 @@ function EarningRow({
           {formatCurrency(parseFloat(earning.amount.toString()))}
         </div>
         <div className="flex items-center gap-1">
+          <Button variant="ghost" size="icon" onClick={onDuplicate} title="Duplicar receita">
+            <Copy className="h-4 w-4" />
+          </Button>
           <Button variant="ghost" size="icon" onClick={onEdit}>
             <Edit2 className="h-4 w-4" />
           </Button>
@@ -176,8 +188,10 @@ export default function Earnings() {
   const { toast } = useToast();
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingEarning, setEditingEarning] = useState<Earning | null>(null);
+  const [duplicatingEarning, setDuplicatingEarning] = useState<Earning | null>(null);
   const [deletingEarning, setDeletingEarning] = useState<Earning | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const [sortBy, setSortBy] = useState<string>("date_desc");
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
@@ -195,10 +209,12 @@ export default function Earnings() {
   const [tempIncomeValue, setTempIncomeValue] = useState("");
 
   const { data: earnings, isLoading } = useQuery<Earning[]>({
-    queryKey: ["/api/earnings"],
+    queryKey: ["earnings", { sortBy }],
     queryFn: async () => {
       const token = await getAccessToken();
-      const response = await fetch("/api/earnings", {
+      const params = new URLSearchParams();
+      if (sortBy) params.set("sortBy", sortBy);
+      const response = await fetch(`/api/earnings?${params}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!response.ok) throw new Error("Failed to fetch earnings");
@@ -207,7 +223,7 @@ export default function Earnings() {
   });
 
   const { data: incomes } = useQuery<Income[]>({
-    queryKey: ["/api/incomes"],
+    queryKey: ["incomes"],
     queryFn: async () => {
       const token = await getAccessToken();
       const response = await fetch("/api/incomes", {
@@ -234,8 +250,8 @@ export default function Earnings() {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/earnings"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/expenses/stats"] });
+      queryClient.invalidateQueries({ queryKey: ["earnings"], refetchType: "active" });
+      queryClient.invalidateQueries({ queryKey: ["expenses-stats"] });
       toast({
         title: "Sucesso",
         description: "Receita excluída com sucesso",
@@ -305,6 +321,11 @@ export default function Earnings() {
     setIsFormOpen(true);
   };
 
+  const handleDuplicate = (earning: Earning) => {
+    setDuplicatingEarning(earning);
+    setIsFormOpen(true);
+  };
+
   const handleDelete = (earning: Earning) => {
     setDeletingEarning(earning);
   };
@@ -318,13 +339,15 @@ export default function Earnings() {
   const handleFormClose = () => {
     setIsFormOpen(false);
     setEditingEarning(null);
+    setDuplicatingEarning(null);
   };
 
   const handleFormSuccess = () => {
-    queryClient.invalidateQueries({ queryKey: ["/api/earnings"] });
-    queryClient.invalidateQueries({ queryKey: ["/api/expenses/stats"] });
+    queryClient.invalidateQueries({ queryKey: ["earnings"], exact: false });
+    queryClient.invalidateQueries({ queryKey: ["expenses-stats"], exact: false });
     setIsFormOpen(false);
     setEditingEarning(null);
+    setDuplicatingEarning(null);
   };
 
   const handleEditIncome = () => {
@@ -370,8 +393,8 @@ export default function Earnings() {
         if (!response.ok) throw new Error("Failed to create income");
       }
 
-      queryClient.invalidateQueries({ queryKey: ["/api/incomes"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/expenses/stats"] });
+      queryClient.invalidateQueries({ queryKey: ["incomes"] });
+      queryClient.invalidateQueries({ queryKey: ["expenses-stats"] });
       setIsEditingIncome(false);
       setTempIncomeValue("");
       toast({
@@ -407,8 +430,8 @@ export default function Earnings() {
         if (response.status !== 404 && !response.ok) throw new Error("Failed to delete income");
       }
 
-      queryClient.invalidateQueries({ queryKey: ["/api/incomes"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/expenses/stats"] });
+      queryClient.invalidateQueries({ queryKey: ["incomes"] });
+      queryClient.invalidateQueries({ queryKey: ["expenses-stats"] });
       toast({
         title: "Sucesso",
         description: "Renda mensal removida com sucesso",
@@ -442,8 +465,8 @@ export default function Earnings() {
     <div className="flex flex-col gap-6 p-4 sm:p-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Receitas</h1>
-          <p className="text-muted-foreground">
+          <h1 className="text-xl sm:text-2xl font-bold">Receitas</h1>
+          <p className="text-sm text-muted-foreground">
             Gerencie suas receitas e ganhos extras
           </p>
         </div>
@@ -457,7 +480,7 @@ export default function Earnings() {
         <div className="grid gap-6 lg:grid-cols-2">
           <Card>
           <CardHeader>
-            <CardTitle>Renda Mensal</CardTitle>
+            <CardTitle className="text-base sm:text-lg">Renda Mensal</CardTitle>
             <CardDescription>
               Configure sua renda mensal fixa
             </CardDescription>
@@ -504,7 +527,7 @@ export default function Earnings() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Total de Receitas</CardTitle>
+            <CardTitle className="text-base sm:text-lg">Total de Receitas</CardTitle>
             <CardDescription>
               Valor total das receitas registradas
             </CardDescription>
@@ -528,8 +551,8 @@ export default function Earnings() {
           <CardHeader>
             <div className="flex items-center justify-between">
               <div>
-                <CardTitle className="flex items-center gap-2">
-                  <Receipt className="h-5 w-5" />
+                <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+                  <Receipt className="h-4 w-4 sm:h-5 sm:w-5" />
                   Lista de Receitas
                 </CardTitle>
                 <CardDescription>
@@ -839,6 +862,21 @@ export default function Earnings() {
                   className="pl-9"
                 />
               </div>
+              <Select
+                value={sortBy}
+                onValueChange={setSortBy}
+              >
+                <SelectTrigger className="w-full sm:w-[200px]">
+                  <ArrowUpDown className="mr-2 h-4 w-4" />
+                  <SelectValue placeholder="Ordenar por" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="date_desc">Data (mais recente)</SelectItem>
+                  <SelectItem value="date_asc">Data (mais antiga)</SelectItem>
+                  <SelectItem value="amount_desc">Valor (maior)</SelectItem>
+                  <SelectItem value="amount_asc">Valor (menor)</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="space-y-4">
@@ -859,6 +897,7 @@ export default function Earnings() {
                         earning={earning}
                         onEdit={() => handleEdit(earning)}
                         onDelete={() => handleDelete(earning)}
+                        onDuplicate={() => handleDuplicate(earning)}
                       />
                     ))}
                   </div>
@@ -869,6 +908,7 @@ export default function Earnings() {
                         earning={earning}
                         onEdit={() => handleEdit(earning)}
                         onDelete={() => handleDelete(earning)}
+                        onDuplicate={() => handleDuplicate(earning)}
                       />
                     ))}
                   </div>
@@ -913,11 +953,12 @@ export default function Earnings() {
         <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>
-              {editingEarning ? "Editar Receita" : "Nova Receita"}
+              {editingEarning ? "Editar Receita" : duplicatingEarning ? "Duplicar Receita" : "Nova Receita"}
             </DialogTitle>
           </DialogHeader>
           <EarningForm
             earning={editingEarning}
+            initialData={duplicatingEarning}
             onSuccess={handleFormSuccess}
             onCancel={handleFormClose}
           />

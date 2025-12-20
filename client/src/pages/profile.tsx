@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation } from "@tanstack/react-query";
+import { queryClient } from "@/lib/queryClient";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -118,6 +119,10 @@ export default function ProfilePage() {
     },
     onSuccess: (updatedUser) => {
       updateUser(updatedUser);
+      queryClient.invalidateQueries({ queryKey: ["expenses"], refetchType: "active" });
+      queryClient.invalidateQueries({ queryKey: ["earnings"], refetchType: "active" });
+      queryClient.invalidateQueries({ queryKey: ["expenses-stats"], refetchType: "active" });
+      queryClient.invalidateQueries({ queryKey: ["incomes"], refetchType: "active" });
       toast({
         title: "Perfil atualizado",
         description: "Suas informações foram atualizadas com sucesso.",

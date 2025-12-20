@@ -41,6 +41,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth";
 import { cn } from "@/lib/utils";
+import { queryClient } from "@/lib/queryClient";
 import { CATEGORIES, PAYMENT_METHODS, type Expense } from "@shared/schema";
 
 const formSchema = z.object({
@@ -78,6 +79,7 @@ type FormData = z.infer<typeof formSchema>;
 
 interface ExpenseFormProps {
   expense?: Expense | null;
+  initialData?: Expense | null;
   onSuccess: () => void;
   onCancel: () => void;
 }
@@ -89,28 +91,30 @@ function formatCurrency(value: number) {
   }).format(value);
 }
 
-export function ExpenseForm({ expense, onSuccess, onCancel }: ExpenseFormProps) {
+export function ExpenseForm({ expense, initialData, onSuccess, onCancel }: ExpenseFormProps) {
   const { getAccessToken, user } = useAuth();
   const { toast } = useToast();
   const [showSuggestions, setShowSuggestions] = useState(false);
   const descriptionRef = useRef<HTMLInputElement>(null);
 
+  const dataSource = initialData || expense;
+
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      date: expense ? new Date(expense.date + 'T12:00:00') : new Date(),
-      category: expense?.category || "",
-      description: expense?.description || "",
-      unitValue: expense ? String(expense.unitValue).replace(".", ",") : "",
-      quantity: expense?.quantity || 1,
-      paymentMethod: expense?.paymentMethod || "",
-      account: expense?.account || "",
-      location: expense?.location || "",
-      isFixed: expense?.isFixed || false,
-      paymentDate: expense?.paymentDate ? new Date(expense.paymentDate + 'T12:00:00') : (expense?.isPaid ? new Date() : undefined),
-      isPaid: expense?.isPaid || false,
-      installments: expense?.installments || undefined,
-      notes: expense?.notes || "",
+      date: dataSource ? new Date(dataSource.date + 'T12:00:00') : new Date(),
+      category: dataSource?.category || "",
+      description: dataSource?.description || "",
+      unitValue: dataSource ? String(dataSource.unitValue).replace(".", ",") : "",
+      quantity: dataSource?.quantity || 1,
+      paymentMethod: dataSource?.paymentMethod || "",
+      account: dataSource?.account || "",
+      location: dataSource?.location || "",
+      isFixed: dataSource?.isFixed || false,
+      paymentDate: dataSource?.paymentDate ? new Date(dataSource.paymentDate + 'T12:00:00') : (dataSource?.isPaid ? new Date() : undefined),
+      isPaid: dataSource?.isPaid || false,
+      installments: dataSource?.installments || undefined,
+      notes: dataSource?.notes || "",
     },
   });
 
@@ -152,6 +156,9 @@ export function ExpenseForm({ expense, onSuccess, onCancel }: ExpenseFormProps) 
     mutationFn: async (data: FormData) => {
       const token = await getAccessToken();
       
+      const dateToUse = data.isFixed && !expense ? new Date() : data.date!;
+      const paymentDateToUse = data.isPaid ? (data.paymentDate || new Date()) : data.paymentDate;
+      
       // Despesa normal (mesmo com parcelas, criamos apenas uma entrada)
       const response = await fetch("/api/expenses", {
         method: "POST",
@@ -161,9 +168,10 @@ export function ExpenseForm({ expense, onSuccess, onCancel }: ExpenseFormProps) 
         },
         body: JSON.stringify({
           ...data,
-          date: `${data.date!.getFullYear()}-${String(data.date!.getMonth() + 1).padStart(2, '0')}-${String(data.date!.getDate()).padStart(2, '0')}`,
-          paymentDate: data.paymentDate ? `${data.paymentDate.getFullYear()}-${String(data.paymentDate.getMonth() + 1).padStart(2, '0')}-${String(data.paymentDate.getDate()).padStart(2, '0')}T12:00:00` : undefined,
+          date: `${dateToUse.getFullYear()}-${String(dateToUse.getMonth() + 1).padStart(2, '0')}-${String(dateToUse.getDate()).padStart(2, '0')}`,
+          paymentDate: paymentDateToUse ? `${paymentDateToUse.getFullYear()}-${String(paymentDateToUse.getMonth() + 1).padStart(2, '0')}-${String(paymentDateToUse.getDate()).padStart(2, '0')}T12:00:00` : undefined,
           unitValue: String(data.unitValue).replace(",", "."),
+          isPaid: Boolean(data.isPaid),
         }),
       });
       if (!response.ok) {
@@ -173,6 +181,8 @@ export function ExpenseForm({ expense, onSuccess, onCancel }: ExpenseFormProps) 
       return response.json();
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["expenses"], refetchType: "active" });
+      queryClient.invalidateQueries({ queryKey: ["/api/expenses/stats"] });
       toast({
         title: "Despesa criada",
         description: "A despesa foi adicionada com sucesso.",
@@ -211,6 +221,8 @@ export function ExpenseForm({ expense, onSuccess, onCancel }: ExpenseFormProps) 
       return response.json();
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["expenses"], refetchType: "active" });
+      queryClient.invalidateQueries({ queryKey: ["/api/expenses/stats"] });
       toast({
         title: "Despesa atualizada",
         description: "A despesa foi atualizada com sucesso.",
@@ -227,17 +239,10 @@ export function ExpenseForm({ expense, onSuccess, onCancel }: ExpenseFormProps) 
   });
 
   const onSubmit = (data: FormData) => {
-    // Garantir que sempre tenha uma data
-    const submitData = {
-      ...data,
-      date: data.date || new Date(),
-      paymentDate: data.isPaid ? (data.paymentDate || new Date()) : data.paymentDate,
-    };
-
     if (expense) {
-      updateMutation.mutate(submitData);
+      updateMutation.mutate(data);
     } else {
-      createMutation.mutate(submitData);
+      createMutation.mutate(data);
     }
   };
 
@@ -246,6 +251,28 @@ export function ExpenseForm({ expense, onSuccess, onCancel }: ExpenseFormProps) 
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+        <FormField
+          control={form.control}
+          name="isFixed"
+          render={({ field }) => (
+            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 sm:p-4">
+              <div className="space-y-0.5">
+                <FormLabel className="text-sm sm:text-base">Despesa Fixa</FormLabel>
+                <p className="text-xs sm:text-sm text-muted-foreground">
+                  Marque se esta despesa se repete mensalmente
+                </p>
+              </div>
+              <FormControl>
+                <Switch
+                  checked={field.value}
+                  onCheckedChange={(checked) => field.onChange(Boolean(checked))}
+                  data-testid="switch-is-fixed"
+                />
+              </FormControl>
+            </FormItem>
+          )}
+        />
+
         <div className="grid gap-4 sm:grid-cols-2">
           {!isFixed && (
             <FormField
@@ -510,41 +537,19 @@ export function ExpenseForm({ expense, onSuccess, onCancel }: ExpenseFormProps) 
 
         <FormField
           control={form.control}
-          name="isFixed"
-          render={({ field }) => (
-            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-              <div className="space-y-0.5">
-                <FormLabel className="text-base">Despesa Fixa</FormLabel>
-                <p className="text-sm text-muted-foreground">
-                  Marque se esta despesa se repete mensalmente
-                </p>
-              </div>
-              <FormControl>
-                <Switch
-                  checked={field.value}
-                  onCheckedChange={field.onChange}
-                  data-testid="switch-is-fixed"
-                />
-              </FormControl>
-            </FormItem>
-          )}
-        />
-
-        <FormField
-          control={form.control}
           name="isPaid"
           render={({ field }) => (
-            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 sm:p-4">
               <div className="space-y-0.5">
-                <FormLabel className="text-base">Pago</FormLabel>
-                <p className="text-sm text-muted-foreground">
+                <FormLabel className="text-sm sm:text-base">Pago</FormLabel>
+                <p className="text-xs sm:text-sm text-muted-foreground">
                   Marque se esta despesa já foi paga
                 </p>
               </div>
               <FormControl>
                 <Switch
                   checked={field.value}
-                  onCheckedChange={field.onChange}
+                  onCheckedChange={(checked) => field.onChange(Boolean(checked))}
                   data-testid="switch-is-paid"
                 />
               </FormControl>

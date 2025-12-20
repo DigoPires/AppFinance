@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -16,6 +16,8 @@ import {
   X,
   Check,
   CalendarIcon,
+  Copy,
+  ArrowUpDown,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -80,11 +82,13 @@ function ExpenseRow({
   onEdit,
   onDelete,
   onMarkPaid,
+  onDuplicate,
 }: {
   expense: ExpenseWithInstallments;
   onEdit: () => void;
   onDelete: () => void;
   onMarkPaid: () => void;
+  onDuplicate: () => void;
 }) {
   return (
     <div
@@ -96,44 +100,56 @@ function ExpenseRow({
           <Receipt className="h-5 w-5 text-primary" />
         </div>
         <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="font-medium" data-testid={`text-expense-description-${expense.id}`}>
+          <div className="flex flex-wrap items-center gap-1 sm:gap-2">
+            <span className="font-medium text-sm sm:text-base truncate" data-testid={`text-expense-description-${expense.id}`}>
               {expense.displayDescription || expense.description}
             </span>
-            <Badge variant="secondary" className="text-xs">
+            <Badge variant="secondary" className="text-xs px-1 py-0">
               {expense.category}
             </Badge>
             {expense.isFixed && (
-              <Badge variant="outline" className="text-xs">
+              <Badge variant="outline" className="text-xs px-1 py-0">
                 Fixo
               </Badge>
             )}
             {expense.installments && expense.installments > 1 && (
-              <Badge variant="default" className="text-xs">
+              <Badge variant="default" className="text-xs px-1 py-0">
                 {expense.currentInstallment}/{expense.totalInstallments}x
               </Badge>
             )}
           </div>
-          <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+          <div className="mt-1 flex flex-wrap items-center gap-1 sm:gap-2 text-xs sm:text-sm text-muted-foreground">
             <span>{(() => {
-              const dateToShow = expense.isPaid && expense.paymentDate ? expense.paymentDate : expense.date;
+              const dateToShow = expense.isFixed && !expense.isPaid ? 'Pendente' : (expense.paymentDate || expense.date);
+              if (dateToShow === 'Pendente') return 'Pendente';
               const [year, month, day] = dateToShow.split('-');
               return `${day}/${month}/${year}`;
             })()}</span>
             <span>-</span>
-            <span>{expense.paymentMethod}</span>
+            <span className="truncate">{expense.paymentMethod}</span>
             {expense.location && (
               <>
-                <span>-</span>
-                <span>{expense.location}</span>
+                <span className="hidden sm:inline">-</span>
+                <span className="truncate hidden sm:inline">{expense.location}</span>
+              </>
+            )}
+            {expense.isFixed && expense.paymentDate && expense.paymentDate !== expense.date && (
+              <>
+                <span className="hidden sm:inline">-</span>
+                <span className="text-xs text-muted-foreground truncate hidden sm:inline">
+                  Registrado em {(() => {
+                    const [year, month, day] = expense.date.split('-');
+                    return `${day}/${month}/${year}`;
+                  })()}
+                </span>
               </>
             )}
           </div>
         </div>
       </div>
 
-      <div className="flex items-center justify-between gap-4 sm:justify-end">
-        <div className="text-right">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-4">
+        <div className="text-right sm:text-left order-2 sm:order-1">
           {expense.quantity > 1 && (
             <div className="text-xs text-muted-foreground">
               {expense.quantity}x {formatCurrency(expense.unitValue)}
@@ -144,7 +160,7 @@ function ExpenseRow({
               Parcela {expense.currentInstallment} de {expense.totalInstallments}
             </div>
           )}
-          <div className="font-mono font-semibold" data-testid={`text-expense-total-${expense.id}`}>
+          <div className="font-mono font-semibold text-sm sm:text-base" data-testid={`text-expense-total-${expense.id}`}>
             {expense.installments && expense.installments > 1 
               ? formatCurrency(expense.currentInstallmentValue || 0)
               : formatCurrency(expense.totalValue)
@@ -152,9 +168,9 @@ function ExpenseRow({
           </div>
         </div>
 
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1 order-1 sm:order-2">
           {expense.isFixed && expense.isPaid ? (
-            <Badge variant="default" className="bg-green-100 text-green-800 hover:bg-green-100">
+            <Badge variant="default" className="bg-green-100 text-green-800 hover:bg-green-100 text-xs px-2 py-1">
               Pago
             </Badge>
           ) : expense.isFixed && !expense.isPaid ? (
@@ -162,7 +178,7 @@ function ExpenseRow({
               variant="ghost"
               size="sm"
               onClick={onMarkPaid}
-              className="text-green-600 hover:text-green-700 hover:bg-green-50 h-8 px-2"
+              className="text-green-600 hover:text-green-700 hover:bg-green-50 h-7 px-2 text-xs"
               title="Marcar como pago"
               data-testid={`button-mark-paid-expense-${expense.id}`}
             >
@@ -173,19 +189,31 @@ function ExpenseRow({
           ) : null}
           <Button
             variant="ghost"
-            size="icon"
-            onClick={onEdit}
-            data-testid={`button-edit-expense-${expense.id}`}
+            size="sm"
+            onClick={onDuplicate}
+            className="h-7 w-7 p-0"
+            title="Duplicar despesa"
+            data-testid={`button-duplicate-expense-${expense.id}`}
           >
-            <Edit2 className="h-4 w-4" />
+            <Copy className="h-3 w-3" />
           </Button>
           <Button
             variant="ghost"
-            size="icon"
+            size="sm"
+            onClick={onEdit}
+            className="h-7 w-7 p-0"
+            data-testid={`button-edit-expense-${expense.id}`}
+          >
+            <Edit2 className="h-3 w-3" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={onDelete}
+            className="h-7 w-7 p-0"
             data-testid={`button-delete-expense-${expense.id}`}
           >
-            <Trash2 className="h-4 w-4 text-destructive" />
+            <Trash2 className="h-3 w-3 text-destructive" />
           </Button>
         </div>
       </div>
@@ -198,11 +226,13 @@ function ExpenseCard({
   onEdit,
   onDelete,
   onMarkPaid,
+  onDuplicate,
 }: {
   expense: Expense;
   onEdit: () => void;
   onDelete: () => void;
   onMarkPaid: () => void;
+  onDuplicate: () => void;
 }) {
   return (
     <Card data-testid={`card-expense-${expense.id}`}>
@@ -231,7 +261,9 @@ function ExpenseCard({
         <div className="mt-3 flex items-center justify-between text-sm text-muted-foreground">
           <div className="flex flex-wrap items-center gap-2">
             <span>{(() => {
-              const [year, month, day] = expense.date.split('-');
+              const dateToShow = expense.isFixed && !expense.isPaid ? 'Pendente' : (expense.paymentDate || expense.date);
+              if (dateToShow === 'Pendente') return 'Pendente';
+              const [year, month, day] = dateToShow.split('-');
               return `${day}/${month}/${year}`;
             })()}</span>
             <span>-</span>
@@ -255,6 +287,9 @@ function ExpenseCard({
                 <span className="sm:hidden">Data Pag.</span>
               </Button>
             ) : null}
+            <Button variant="ghost" size="icon" onClick={onDuplicate} title="Duplicar despesa">
+              <Copy className="h-4 w-4" />
+            </Button>
             <Button variant="ghost" size="icon" onClick={onEdit}>
               <Edit2 className="h-4 w-4" />
             </Button>
@@ -276,16 +311,20 @@ export default function ExpensesPage() {
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string>("");
   const [isFixedFilter, setIsFixedFilter] = useState<boolean>(false);
+  const [sortBy, setSortBy] = useState<string>("date_desc");
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
+  const [duplicatingExpense, setDuplicatingExpense] = useState<Expense | null>(null);
   const [deletingExpense, setDeletingExpense] = useState<Expense | null>(null);
   const [markingPaidExpense, setMarkingPaidExpense] = useState<Expense | null>(null);
   const [paymentDate, setPaymentDate] = useState<Date | undefined>(undefined);
 
   const limit = 10;
 
+  const expensesKey = ["expenses", { page, search, categoryFilter, isFixedFilter, sortBy, limit, userId: user?.id }];
+
   const { data, isLoading, isFetching, refetch } = useQuery<ExpensesResponse>({
-    queryKey: ["/api/expenses", { page, search, category: categoryFilter, isFixed: isFixedFilter, limit, userId: user?.id }],
+    queryKey: expensesKey,
     queryFn: async () => {
       const token = await getAccessToken();
       const params = new URLSearchParams({
@@ -295,6 +334,7 @@ export default function ExpensesPage() {
       if (search) params.set("search", search);
       if (categoryFilter) params.set("category", categoryFilter);
       if (isFixedFilter) params.set("fixed", "true");
+      if (sortBy) params.set("sortBy", sortBy);
 
       const response = await fetch(`/api/expenses?${params}`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -316,8 +356,8 @@ export default function ExpensesPage() {
       if (!response.ok) throw new Error("Failed to delete expense");
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/expenses"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/expenses/stats"] });
+      queryClient.invalidateQueries({ queryKey: ["expenses"], refetchType: "active" });
+      queryClient.invalidateQueries({ queryKey: ["expenses-stats"] });
       toast({
         title: "Despesa excluída",
         description: "A despesa foi removida com sucesso.",
@@ -356,8 +396,8 @@ export default function ExpensesPage() {
       return response.json();
     },
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ["/api/expenses"], exact: false });
-      queryClient.invalidateQueries({ queryKey: ["/api/expenses/stats"], exact: false });
+      queryClient.invalidateQueries({ queryKey: ["expenses"], refetchType: "active" });
+      queryClient.invalidateQueries({ queryKey: ["expenses-stats"] });
       toast({
         title: "Despesa marcada como paga",
         description: "A despesa foi atualizada com sucesso.",
@@ -384,12 +424,18 @@ export default function ExpensesPage() {
   const handleCloseForm = () => {
     setIsFormOpen(false);
     setEditingExpense(null);
+    setDuplicatingExpense(null);
   };
 
   const handleFormSuccess = () => {
     handleCloseForm();
-    queryClient.invalidateQueries({ queryKey: ["/api/expenses"] });
-    queryClient.invalidateQueries({ queryKey: ["/api/expenses/stats"] });
+    queryClient.invalidateQueries({ queryKey: ["expenses"], refetchType: "active" });
+    queryClient.invalidateQueries({ queryKey: ["expenses-stats"] });
+  };
+
+  const handleDuplicate = (expense: Expense) => {
+    setDuplicatingExpense(expense);
+    setIsFormOpen(true);
   };
 
   const handleOpenMarkPaid = (expense: Expense) => {
@@ -421,6 +467,7 @@ export default function ExpensesPage() {
     setSearch("");
     setCategoryFilter("");
     setIsFixedFilter(false);
+    setSortBy("date_desc");
     setPage(1);
   };
 
@@ -430,10 +477,10 @@ export default function ExpensesPage() {
     <div className="flex flex-col gap-6 p-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold" data-testid="text-expenses-title">
+          <h1 className="text-xl sm:text-2xl font-bold" data-testid="text-expenses-title">
             Despesas
           </h1>
-          <p className="text-muted-foreground">
+          <p className="text-sm text-muted-foreground">
             Gerencie todas as suas despesas
           </p>
         </div>
@@ -480,6 +527,24 @@ export default function ExpensesPage() {
                   ))}
                 </SelectContent>
               </Select>
+              <Select
+                value={sortBy}
+                onValueChange={(value) => {
+                  setSortBy(value);
+                  setPage(1);
+                }}
+              >
+                <SelectTrigger className="w-[180px]" data-testid="select-sort-filter">
+                  <ArrowUpDown className="mr-2 h-4 w-4" />
+                  <SelectValue placeholder="Ordenar por" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="date_desc">Data (mais recente)</SelectItem>
+                  <SelectItem value="date_asc">Data (mais antiga)</SelectItem>
+                  <SelectItem value="amount_desc">Valor (maior)</SelectItem>
+                  <SelectItem value="amount_asc">Valor (menor)</SelectItem>
+                </SelectContent>
+              </Select>
               <div className="flex items-center gap-2">
                 <label className="text-sm font-medium">Apenas Fixas</label>
                 <Switch
@@ -518,8 +583,7 @@ export default function ExpensesPage() {
                     expense={expense}
                     onEdit={() => handleOpenForm(expense)}
                     onDelete={() => setDeletingExpense(expense)}
-                    onMarkPaid={() => handleOpenMarkPaid(expense)}
-                  />
+                    onMarkPaid={() => handleOpenMarkPaid(expense)}                    onDuplicate={() => handleDuplicate(expense)}                  />
                 ))}
               </div>
               <div className="flex flex-col gap-3 sm:hidden">
@@ -530,6 +594,7 @@ export default function ExpensesPage() {
                     onEdit={() => handleOpenForm(expense)}
                     onDelete={() => setDeletingExpense(expense)}
                     onMarkPaid={() => handleOpenMarkPaid(expense)}
+                    onDuplicate={() => handleDuplicate(expense)}
                   />
                 ))}
               </div>
@@ -586,11 +651,12 @@ export default function ExpensesPage() {
         <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle>
-              {editingExpense ? "Editar Despesa" : "Nova Despesa"}
+              {editingExpense ? "Editar Despesa" : duplicatingExpense ? "Duplicar Despesa" : "Nova Despesa"}
             </DialogTitle>
           </DialogHeader>
           <ExpenseForm
             expense={editingExpense}
+            initialData={duplicatingExpense}
             onSuccess={handleFormSuccess}
             onCancel={handleCloseForm}
           />

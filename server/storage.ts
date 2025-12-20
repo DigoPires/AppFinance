@@ -16,7 +16,7 @@ import {
   type RefreshToken,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, desc, sql, gte, lte } from "drizzle-orm";
+import { eq, and, desc, asc, sql, gte, lte } from "drizzle-orm";
 
 export interface IStorage {
   getUser(id: number): Promise<User | undefined>;
@@ -65,7 +65,7 @@ export interface IStorage {
   updateIncome(id: number, userId: number, data: Partial<Omit<Income, "id" | "userId" | "createdAt">>): Promise<Income | undefined>;
   deleteIncome(id: number, userId: number): Promise<boolean>;
 
-  getEarnings(userId: number): Promise<Earning[]>;
+  getEarnings(userId: number, options?: { sortBy?: string }): Promise<Earning[]>;
   getEarning(id: number, userId: number): Promise<Earning | undefined>;
   createEarning(earning: Omit<Earning, "id">): Promise<Earning>;
   updateEarning(id: number, userId: number, data: Partial<Omit<Earning, "id" | "userId">>): Promise<Earning | undefined>;
@@ -138,9 +138,10 @@ export class DatabaseStorage implements IStorage {
       endDate?: string;
       fixed?: boolean;
       paid?: boolean;
+      sortBy?: string;
     } = {}
   ): Promise<{ expenses: Expense[]; total: number }> {
-    const { page = 1, limit = 10, search, category, startDate, endDate, fixed, paid } = options;
+    const { page = 1, limit = 10, search, category, startDate, endDate, fixed, paid, sortBy = "date_desc" } = options;
     const offset = (page - 1) * limit;
 
     const conditions = [eq(expenses.userId, userId)];
@@ -166,12 +167,37 @@ export class DatabaseStorage implements IStorage {
 
     const whereClause = and(...conditions);
 
+    // Define ordenação baseada no parâmetro sortBy
+    let orderByClause;
+    switch (sortBy) {
+      case "date_asc":
+        // Ordenação ascendente — usa uma expressão condicional para escolher a data correta:
+        // - Se é fixa e ainda não paga, usa a data de registro (date)
+        // - Se tem paymentDate (foi paga), usa paymentDate
+        // - Caso contrário, usa date
+        orderByClause = asc(sql`CASE WHEN ${expenses.isFixed} = true AND ${expenses.isPaid} = false THEN ${expenses.date} WHEN ${expenses.paymentDate} IS NOT NULL THEN ${expenses.paymentDate} ELSE ${expenses.date} END`);
+        break;
+      case "amount_desc":
+        // Para ordenação por valor, usar uma expressão que calcula o valor correto
+        // Se tem installments, usar totalValue / installments, senão usar totalValue
+        orderByClause = desc(sql`CASE WHEN ${expenses.installments} IS NOT NULL AND ${expenses.installments} > 1 THEN ${expenses.totalValue} / ${expenses.installments} ELSE ${expenses.totalValue} END`);
+        break;
+      case "amount_asc":
+        orderByClause = asc(sql`CASE WHEN ${expenses.installments} IS NOT NULL AND ${expenses.installments} > 1 THEN ${expenses.totalValue} / ${expenses.installments} ELSE ${expenses.totalValue} END`);
+        break;
+      case "date_desc":
+      default:
+        // Ordenação descendente — usa a mesma expressão condicional explicita para escolher a data correta
+        orderByClause = desc(sql`CASE WHEN ${expenses.isFixed} = true AND ${expenses.isPaid} = false THEN ${expenses.date} WHEN ${expenses.paymentDate} IS NOT NULL THEN ${expenses.paymentDate} ELSE ${expenses.date} END`);
+        break;
+    }
+
     const [expensesList, countResult] = await Promise.all([
       db
         .select()
         .from(expenses)
         .where(whereClause)
-        .orderBy(desc(expenses.date))
+        .orderBy(orderByClause)
         .limit(limit)
         .offset(offset),
       db
@@ -345,12 +371,31 @@ export class DatabaseStorage implements IStorage {
     return result.rowCount > 0;
   }
 
-  async getEarnings(userId: number): Promise<Earning[]> {
+  async getEarnings(userId: number, options: { sortBy?: string } = {}): Promise<Earning[]> {
+    const { sortBy = "date_desc" } = options;
+
+    let orderByClause;
+    switch (sortBy) {
+      case "date_asc":
+        orderByClause = [asc(earnings.date), asc(earnings.id)];
+        break;
+      case "amount_desc":
+        orderByClause = [desc(earnings.amount), desc(earnings.id)];
+        break;
+      case "amount_asc":
+        orderByClause = [asc(earnings.amount), asc(earnings.id)];
+        break;
+      case "date_desc":
+      default:
+        orderByClause = [desc(earnings.date), desc(earnings.id)];
+        break;
+    }
+
     return await db
       .select()
       .from(earnings)
       .where(eq(earnings.userId, userId))
-      .orderBy(desc(earnings.date));
+      .orderBy(orderByClause[0], orderByClause[1]);
   }
 
   async getEarning(id: number, userId: number): Promise<Earning | undefined> {

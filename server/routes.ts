@@ -342,7 +342,7 @@ export async function registerRoutes(
 
   app.get("/api/expenses", authMiddleware, async (req: AuthenticatedRequest, res) => {
     try {
-      const { page, limit, search, category, startDate, endDate, fixed, paid } = req.query;
+      const { page, limit, search, category, startDate, endDate, fixed, paid, sortBy } = req.query;
 
       const result = await storage.getExpenses(Number(req.user!.id), {
         page: page ? parseInt(page as string) : 1,
@@ -353,6 +353,7 @@ export async function registerRoutes(
         endDate: endDate as string,
         fixed: fixed === 'true' ? true : fixed === 'false' ? false : undefined,
         paid: paid === 'true' ? true : paid === 'false' ? false : undefined,
+        sortBy: sortBy as string,
       });
 
       const totalPages = Math.ceil(result.total / (limit ? parseInt(limit as string) : 10));
@@ -449,6 +450,8 @@ export async function registerRoutes(
         account: data.account || null,
         location: data.location || null,
         isFixed: data.isFixed,
+        paymentDate: data.paymentDate || null,
+        isPaid: Boolean(data.isPaid),
         installments: data.installments || null,
         installmentNumber: data.installmentNumber || null,
         originalExpenseId: data.originalExpenseId || null,
@@ -489,7 +492,7 @@ export async function registerRoutes(
       if (parsed.data.location !== undefined) updateData.location = parsed.data.location || null;
       if (parsed.data.isFixed !== undefined) updateData.isFixed = parsed.data.isFixed;
       if (parsed.data.paymentDate !== undefined) updateData.paymentDate = parsed.data.paymentDate ? new Date(parsed.data.paymentDate) : null;
-      if (parsed.data.isPaid !== undefined) updateData.isPaid = parsed.data.isPaid;
+      if (parsed.data.isPaid !== undefined) updateData.isPaid = Boolean(parsed.data.isPaid);
       if (parsed.data.installments !== undefined) updateData.installments = parsed.data.installments;
       if (parsed.data.installmentNumber !== undefined) updateData.installmentNumber = parsed.data.installmentNumber;
       if (parsed.data.originalExpenseId !== undefined) updateData.originalExpenseId = parsed.data.originalExpenseId;
@@ -683,7 +686,8 @@ export async function registerRoutes(
 
   app.get("/api/earnings", authMiddleware, async (req: AuthenticatedRequest, res) => {
     try {
-      const earnings = await storage.getEarnings(Number(req.user!.id));
+      const { sortBy } = req.query;
+      const earnings = await storage.getEarnings(Number(req.user!.id), { sortBy: sortBy as string });
 
       // Transform dates to ensure they're in YYYY-MM-DD format
       const transformedEarnings = earnings.map(earning => ({
