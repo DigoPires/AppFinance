@@ -2,10 +2,10 @@ import { useQuery } from "@tanstack/react-query";
 import { format, startOfMonth, endOfMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Link } from "wouter";
-import { 
-  TrendingDown, 
-  Calendar, 
-  Repeat, 
+import {
+  TrendingDown,
+  Calendar,
+  Repeat,
   ArrowUpRight,
   Receipt,
   Wallet,
@@ -133,9 +133,8 @@ function StatCard({
             </span>
             {trend && (
               <span
-                className={`flex items-center text-xs font-medium ${
-                  trend === "down" ? "text-destructive" : trend === "up" ? "text-primary" : "text-muted-foreground"
-                }`}
+                className={`flex items-center text-xs font-medium ${trend === "down" ? "text-destructive" : trend === "up" ? "text-primary" : "text-muted-foreground"
+                  }`}
               >
                 <ArrowUpRight className={`h-3 w-3 ${trend === "down" ? "rotate-90" : ""}`} />
               </span>
@@ -165,7 +164,7 @@ function CategoryCard({
 }) {
   const percentage = total > 0 ? (amount / total) * 100 : 0;
   const IconComponent = categoryIcons[category] || Receipt;
-  
+
   return (
     <div className="flex items-center gap-3 sm:gap-4 rounded-lg border bg-card p-3 sm:p-4">
       <div className="flex h-8 w-8 sm:h-10 sm:w-10 items-center justify-center rounded-lg bg-primary/10 flex-shrink-0">
@@ -369,9 +368,9 @@ export default function Dashboard() {
       // Update existing
       const response = await fetch(`/api/incomes/${monthlyIncome.id}`, {
         method: 'PATCH',
-        headers: { 
+        headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}` 
+          Authorization: `Bearer ${token}`
         },
         body: JSON.stringify({ amount: value.toString() }),
       });
@@ -380,14 +379,14 @@ export default function Dashboard() {
       // Create new
       const response = await fetch("/api/incomes", {
         method: 'POST',
-        headers: { 
+        headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}` 
+          Authorization: `Bearer ${token}`
         },
-        body: JSON.stringify({ 
-          description: "Renda Mensal", 
-          amount: value.toString(), 
-          isMonthly: true 
+        body: JSON.stringify({
+          description: "Renda Mensal",
+          amount: value.toString(),
+          isMonthly: true
         }),
       });
       if (!response.ok) throw new Error("Failed to create income");
@@ -418,7 +417,7 @@ export default function Dashboard() {
       dateMatch = filters.dateFilter.years.includes(expYear.toString());
     } else if (filters.dateFilter.mode === 'month' && filters.dateFilter.years.length > 0 && filters.dateFilter.months.length > 0) {
       dateMatch = filters.dateFilter.years.includes(expYear.toString()) &&
-                  filters.dateFilter.months.includes(expMonth.toString());
+        filters.dateFilter.months.includes(expMonth.toString());
     } else if (filters.dateFilter.mode === 'range') {
       const fromDate = filters.dateFilter.from ? new Date(filters.dateFilter.from + 'T00:00:00') : null;
       const toDate = filters.dateFilter.to ? new Date(filters.dateFilter.to + 'T23:59:59.999') : null;
@@ -448,7 +447,7 @@ export default function Dashboard() {
       dateMatch = expYear.toString() === filters.dateFilter.year;
     } else if (filters.dateFilter.mode === 'month' && filters.dateFilter.year && filters.dateFilter.month) {
       dateMatch = expYear.toString() === filters.dateFilter.year &&
-                  expMonth.toString() === filters.dateFilter.month;
+        expMonth.toString() === filters.dateFilter.month;
     } else if (filters.dateFilter.mode === 'range') {
       const fromDate = filters.dateFilter.from ? new Date(filters.dateFilter.from + 'T00:00:00') : null;
       const toDate = filters.dateFilter.to ? new Date(filters.dateFilter.to + 'T23:59:59.999') : null;
@@ -471,7 +470,7 @@ export default function Dashboard() {
   }) || [];
 
   // Extrair anos únicos dos dados de despesas
-  const availableYears = allExpenses ? 
+  const availableYears = allExpenses ?
     allExpenses
       .map(expense => {
         const [year] = expense.date.split('-');
@@ -484,8 +483,8 @@ export default function Dashboard() {
   const filteredStats = filteredExpenses ? {
     totalSpent: filteredExpenses.reduce((sum, exp) => {
       // Para despesas parceladas, usar o valor da parcela atual
-      const value = exp.installments && exp.installments > 1 
-        ? (exp.currentInstallmentValue || 0) 
+      const value = exp.installments && exp.installments > 1
+        ? (exp.currentInstallmentValue || 0)
         : parseFloat(exp.totalValue.toString());
       return sum + value;
     }, 0),
@@ -497,23 +496,23 @@ export default function Dashboard() {
       })
       .reduce((sum, exp) => {
         // Para despesas parceladas, usar o valor da parcela atual
-        const value = exp.installments && exp.installments > 1 
-          ? (exp.currentInstallmentValue || 0) 
+        const value = exp.installments && exp.installments > 1
+          ? (exp.currentInstallmentValue || 0)
           : parseFloat(exp.totalValue.toString());
         return sum + value;
       }, 0),
     fixedExpenses: filteredExpenses.filter(exp => exp.isFixed).reduce((sum, exp) => {
       // Para despesas fixas parceladas, usar o valor da parcela atual
-      const value = exp.installments && exp.installments > 1 
-        ? (exp.currentInstallmentValue || 0) 
+      const value = exp.installments && exp.installments > 1
+        ? (exp.currentInstallmentValue || 0)
         : parseFloat(exp.totalValue.toString());
       return sum + value;
     }, 0),
     expenseCount: filteredExpenses.length,
     categoryBreakdown: filteredExpenses.reduce((acc, exp) => {
       // Para despesas parceladas, usar o valor da parcela atual
-      const value = exp.installments && exp.installments > 1 
-        ? (exp.currentInstallmentValue || 0) 
+      const value = exp.installments && exp.installments > 1
+        ? (exp.currentInstallmentValue || 0)
         : parseFloat(exp.totalValue.toString());
       acc[exp.category] = (acc[exp.category] || 0) + value;
       return acc;
@@ -526,14 +525,14 @@ export default function Dashboard() {
   const monthStart = format(startOfMonth(new Date()), "dd/MM");
   const monthEnd = format(endOfMonth(new Date()), "dd/MM");
 
-  const categoryEntries = filteredStats?.categoryBreakdown 
+  const categoryEntries = filteredStats?.categoryBreakdown
     ? Object.entries(filteredStats.categoryBreakdown).sort((a, b) => {
-        // "Outros" sempre no final
-        if (a[0] === 'Outros') return 1;
-        if (b[0] === 'Outros') return -1;
-        // Outras categorias ordenadas por valor decrescente
-        return b[1] - a[1];
-      })
+      // "Outros" sempre no final
+      if (a[0] === 'Outros') return 1;
+      if (b[0] === 'Outros') return -1;
+      // Outras categorias ordenadas por valor decrescente
+      return b[1] - a[1];
+    })
     : [];
 
   // Dynamic options based on existing data
@@ -603,115 +602,50 @@ export default function Dashboard() {
           <div className={`mt-4 transition-all duration-1000 ease-out ${filtersOpen ? 'opacity-100 scale-100' : 'opacity-0 scale-75'} origin-top`}>
             <div className="flex flex-col gap-4 p-3 sm:p-4 bg-muted/50 rounded-lg border border-border/50 shadow-sm backdrop-blur-sm transform transition-all duration-800 ease-out delay-200">
               <div className="grid gap-4 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:flex 2xl:flex-wrap 2xl:gap-4 2xl:items-end">
-              <div className={`flex flex-col gap-2 ${filtersOpen ? 'animate-in fade-in slide-in-from-left-2 duration-400 fill-mode-both' : 'animate-out fade-out slide-out-to-left-2 duration-300 fill-mode-both'}`} style={{ animationDelay: filtersOpen ? '0ms' : '350ms' }}>
-                <label className="text-sm font-medium">Período</label>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button variant="outline" className="w-full justify-start transition-all duration-200 hover:scale-105 hover:shadow-md">
-                      <Calendar className="mr-2 h-4 w-4" />
-                      {filters.dateFilter.mode === 'all' && 'Todos os períodos'}
-                      {filters.dateFilter.mode === 'year' && filters.dateFilter.year && `${filters.dateFilter.year}`}
-                      {filters.dateFilter.mode === 'month' && filters.dateFilter.year && filters.dateFilter.month &&
-                        `${filters.dateFilter.month.padStart(2, '0')}/${filters.dateFilter.year}`}
-                      {filters.dateFilter.mode === 'range' && filters.dateFilter.from && filters.dateFilter.to &&
-                        `${new Date(filters.dateFilter.from).toLocaleDateString('pt-BR')} - ${new Date(filters.dateFilter.to).toLocaleDateString('pt-BR')}`}
-                      {filters.dateFilter.mode === 'range' && filters.dateFilter.from && !filters.dateFilter.to &&
-                        `A partir de ${new Date(filters.dateFilter.from).toLocaleDateString('pt-BR')}`}
-                      {filters.dateFilter.mode === 'range' && !filters.dateFilter.from && filters.dateFilter.to &&
-                        `Até ${new Date(filters.dateFilter.to).toLocaleDateString('pt-BR')}`}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-80" align="start">
-                    <div className="space-y-4">
-                      <div className="space-y-2">
-                        <h4 className="font-medium text-sm">Tipo de filtro</h4>
-                        <Select
-                          value={filters.dateFilter.mode}
-                          onValueChange={(value: 'all' | 'year' | 'month' | 'range') =>
-                            setFilters(prev => ({
-                              ...prev,
-                              dateFilter: { ...prev.dateFilter, mode: value }
-                            }))
-                          }
-                        >
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="all">Todos os períodos</SelectItem>
-                            <SelectItem value="year">Por ano</SelectItem>
-                            <SelectItem value="month">Por mês</SelectItem>
-                            <SelectItem value="range">Período específico</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      {filters.dateFilter.mode === 'year' && (
+                <div className={`flex flex-col gap-2 ${filtersOpen ? 'animate-in fade-in slide-in-from-left-2 duration-400 fill-mode-both' : 'animate-out fade-out slide-out-to-left-2 duration-300 fill-mode-both'}`} style={{ animationDelay: filtersOpen ? '0ms' : '350ms' }}>
+                  <label className="text-sm font-medium">Período</label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" className="w-full justify-start transition-all duration-200 hover:scale-105 hover:shadow-md">
+                        <Calendar className="mr-2 h-4 w-4" />
+                        {filters.dateFilter.mode === 'all' && 'Todos os períodos'}
+                        {filters.dateFilter.mode === 'year' && filters.dateFilter.year && `${filters.dateFilter.year}`}
+                        {filters.dateFilter.mode === 'month' && filters.dateFilter.year && filters.dateFilter.month &&
+                          `${filters.dateFilter.month.padStart(2, '0')}/${filters.dateFilter.year}`}
+                        {filters.dateFilter.mode === 'range' && filters.dateFilter.from && filters.dateFilter.to &&
+                          `${new Date(filters.dateFilter.from).toLocaleDateString('pt-BR')} - ${new Date(filters.dateFilter.to).toLocaleDateString('pt-BR')}`}
+                        {filters.dateFilter.mode === 'range' && filters.dateFilter.from && !filters.dateFilter.to &&
+                          `A partir de ${new Date(filters.dateFilter.from).toLocaleDateString('pt-BR')}`}
+                        {filters.dateFilter.mode === 'range' && !filters.dateFilter.from && filters.dateFilter.to &&
+                          `Até ${new Date(filters.dateFilter.to).toLocaleDateString('pt-BR')}`}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-80" align="start">
+                      <div className="space-y-4">
                         <div className="space-y-2">
-                          <label className="text-sm font-medium">Anos</label>
-                          <div className="flex gap-2">
-                            <Popover>
-                              <PopoverTrigger asChild>
-                                <Button variant="outline" className="flex-1 min-w-0 justify-start transition-all duration-200 hover:scale-105 hover:shadow-md">
-                                  <span className="truncate">
-                                    {filters.dateFilter.years.length === 0
-                                      ? "Selecionar anos"
-                                      : filters.dateFilter.years.length === availableYears.length
-                                      ? "Todos os anos"
-                                      : (() => {
-                                          const sortedYears = [...filters.dateFilter.years].sort((a, b) => parseInt(a) - parseInt(b));
-                                          const text = sortedYears.join(", ");
-                                          return text.length > 25 ? text.slice(0, 22) + "..." : text;
-                                        })()
-                                    }
-                                  </span>
-                                </Button>
-                              </PopoverTrigger>
-                              <PopoverContent className="w-56 p-0">
-                                <Command>
-                                  <CommandInput placeholder="Buscar ano..." />
-                                  <CommandList>
-                                    <CommandEmpty>Nenhum ano.</CommandEmpty>
-                                    <CommandGroup>
-                                      {availableYears.map((year) => (
-                                        <CommandItem
-                                          key={year}
-                                          onSelect={() => {
-                                            setFilters(prev => ({
-                                              ...prev,
-                                              dateFilter: {
-                                                ...prev.dateFilter,
-                                                years: prev.dateFilter.years.includes(year.toString())
-                                                  ? prev.dateFilter.years.filter(y => y !== year.toString())
-                                                  : [...prev.dateFilter.years, year.toString()]
-                                              }
-                                            }));
-                                          }}
-                                        >
-                                          <Check
-                                            className={`mr-2 h-4 w-4 ${
-                                              filters.dateFilter.years.includes(year.toString()) ? "opacity-100" : "opacity-0"
-                                            }`}
-                                          />
-                                          {year}
-                                        </CommandItem>
-                                      ))}
-                                    </CommandGroup>
-                                  </CommandList>
-                                </Command>
-                              </PopoverContent>
-                            </Popover>
-                            {filters.dateFilter.years.length > 0 && (
-                              <Button variant="ghost" size="sm" onClick={() => setFilters(prev => ({ ...prev, dateFilter: { ...prev.dateFilter, years: [] } }))}>
-                                <X className="h-4 w-4" />
-                              </Button>
-                            )}
-                          </div>
+                          <h4 className="font-medium text-sm">Tipo de filtro</h4>
+                          <Select
+                            value={filters.dateFilter.mode}
+                            onValueChange={(value: 'all' | 'year' | 'month' | 'range') =>
+                              setFilters(prev => ({
+                                ...prev,
+                                dateFilter: { ...prev.dateFilter, mode: value }
+                              }))
+                            }
+                          >
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="all">Todos os períodos</SelectItem>
+                              <SelectItem value="year">Por ano</SelectItem>
+                              <SelectItem value="month">Por mês</SelectItem>
+                              <SelectItem value="range">Período específico</SelectItem>
+                            </SelectContent>
+                          </Select>
                         </div>
-                      )}
 
-                      {filters.dateFilter.mode === 'month' && (
-                        <div className="grid grid-cols-2 gap-2">
+                        {filters.dateFilter.mode === 'year' && (
                           <div className="space-y-2">
                             <label className="text-sm font-medium">Anos</label>
                             <div className="flex gap-2">
@@ -722,17 +656,17 @@ export default function Dashboard() {
                                       {filters.dateFilter.years.length === 0
                                         ? "Selecionar anos"
                                         : filters.dateFilter.years.length === availableYears.length
-                                        ? "Todos"
-                                        : (() => {
+                                          ? "Todos os anos"
+                                          : (() => {
                                             const sortedYears = [...filters.dateFilter.years].sort((a, b) => parseInt(a) - parseInt(b));
                                             const text = sortedYears.join(", ");
-                                            return text.length > 20 ? text.slice(0, 17) + "..." : text;
+                                            return text.length > 25 ? text.slice(0, 22) + "..." : text;
                                           })()
                                       }
                                     </span>
                                   </Button>
                                 </PopoverTrigger>
-                                <PopoverContent className="w-80 p-0">
+                                <PopoverContent className="w-56 p-0">
                                   <Command>
                                     <CommandInput placeholder="Buscar ano..." />
                                     <CommandList>
@@ -754,9 +688,8 @@ export default function Dashboard() {
                                             }}
                                           >
                                             <Check
-                                              className={`mr-2 h-4 w-4 ${
-                                                filters.dateFilter.years.includes(year.toString()) ? "opacity-100" : "opacity-0"
-                                              }`}
+                                              className={`mr-2 h-4 w-4 ${filters.dateFilter.years.includes(year.toString()) ? "opacity-100" : "opacity-0"
+                                                }`}
                                             />
                                             {year}
                                           </CommandItem>
@@ -773,449 +706,508 @@ export default function Dashboard() {
                               )}
                             </div>
                           </div>
-                          <div className="space-y-2">
-                            <label className="text-sm font-medium">Meses</label>
-                            <div className="flex gap-2">
-                              <Popover>
-                                <PopoverTrigger asChild>
-                                  <Button variant="outline" className="flex-1 min-w-0 justify-start transition-all duration-200 hover:scale-105 hover:shadow-md">
-                                    <span className="truncate">
-                                      {filters.dateFilter.months.length === 0
-                                        ? "Selecionar meses"
-                                        : filters.dateFilter.months.length === 12
-                                        ? "Todos"
-                                        : (() => {
-                                            const monthLabels = [
-                                              { value: '1', label: 'Jan' },
-                                              { value: '2', label: 'Fev' },
-                                              { value: '3', label: 'Mar' },
-                                              { value: '4', label: 'Abr' },
-                                              { value: '5', label: 'Mai' },
-                                              { value: '6', label: 'Jun' },
-                                              { value: '7', label: 'Jul' },
-                                              { value: '8', label: 'Ago' },
-                                              { value: '9', label: 'Set' },
-                                              { value: '10', label: 'Out' },
-                                              { value: '11', label: 'Nov' },
-                                              { value: '12', label: 'Dez' },
-                                            ];
-                                            const sortedMonths = [...filters.dateFilter.months].sort((a, b) => parseInt(a) - parseInt(b));
-                                            const text = sortedMonths.map(m => monthLabels.find(ml => ml.value === m)?.label).join(", ");
-                                            return text.length > 20 ? text.slice(0, 17) + "..." : text;
-                                          })()
-                                      }
-                                    </span>
-                                  </Button>
-                                </PopoverTrigger>
-                                <PopoverContent className="w-80 p-0">
-                                  <Command>
-                                    <CommandInput placeholder="Buscar mês..." />
-                                    <CommandList>
-                                      <CommandEmpty>Nenhum mês.</CommandEmpty>
-                                      <CommandGroup>
-                                        {[
-                                          { value: '1', label: 'Janeiro' },
-                                          { value: '2', label: 'Fevereiro' },
-                                          { value: '3', label: 'Março' },
-                                          { value: '4', label: 'Abril' },
-                                          { value: '5', label: 'Maio' },
-                                          { value: '6', label: 'Junho' },
-                                          { value: '7', label: 'Julho' },
-                                          { value: '8', label: 'Agosto' },
-                                          { value: '9', label: 'Setembro' },
-                                          { value: '10', label: 'Outubro' },
-                                          { value: '11', label: 'Novembro' },
-                                          { value: '12', label: 'Dezembro' },
-                                        ].map((month) => (
-                                          <CommandItem
-                                            key={month.value}
-                                            onSelect={() => {
-                                              setFilters(prev => ({
-                                                ...prev,
-                                                dateFilter: {
-                                                  ...prev.dateFilter,
-                                                  months: prev.dateFilter.months.includes(month.value)
-                                                    ? prev.dateFilter.months.filter(m => m !== month.value)
-                                                    : [...prev.dateFilter.months, month.value]
-                                                }
-                                              }));
-                                            }}
-                                          >
-                                            <Check
-                                              className={`mr-2 h-4 w-4 ${
-                                                filters.dateFilter.months.includes(month.value) ? "opacity-100" : "opacity-0"
-                                              }`}
-                                            />
-                                            {month.label}
-                                          </CommandItem>
-                                        ))}
-                                      </CommandGroup>
-                                    </CommandList>
-                                  </Command>
-                                </PopoverContent>
-                              </Popover>
-                              {filters.dateFilter.months.length > 0 && (
-                                <Button variant="ghost" size="sm" onClick={() => setFilters(prev => ({ ...prev, dateFilter: { ...prev.dateFilter, months: [] } }))}>
-                                  <X className="h-4 w-4" />
-                                </Button>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      )}
+                        )}
 
-                      {filters.dateFilter.mode === 'range' && (
-                        <div className="space-y-2">
-                          <div className="space-y-2">
-                            <label className="text-sm font-medium">Data inicial</label>
-                            <div className="flex gap-2">
-                              <Input
-                                type="date"
-                                value={filters.dateFilter.from}
-                                onChange={(e) =>
-                                  setFilters(prev => ({
-                                    ...prev,
-                                    dateFilter: { ...prev.dateFilter, from: e.target.value }
-                                  }))
-                                }
-                                className="flex-1"
-                              />
-                              {filters.dateFilter.from && (
-                                <Button variant="ghost" size="sm" onClick={() => setFilters(prev => ({ ...prev, dateFilter: { ...prev.dateFilter, from: '' } }))}>
-                                  <X className="h-4 w-4" />
-                                </Button>
-                              )}
+                        {filters.dateFilter.mode === 'month' && (
+                          <div className="grid grid-cols-2 gap-2">
+                            <div className="space-y-2">
+                              <label className="text-sm font-medium">Anos</label>
+                              <div className="flex gap-2">
+                                <Popover>
+                                  <PopoverTrigger asChild>
+                                    <Button variant="outline" className="flex-1 min-w-0 justify-start transition-all duration-200 hover:scale-105 hover:shadow-md">
+                                      <span className="truncate">
+                                        {filters.dateFilter.years.length === 0
+                                          ? "Selecionar anos"
+                                          : filters.dateFilter.years.length === availableYears.length
+                                            ? "Todos"
+                                            : (() => {
+                                              const sortedYears = [...filters.dateFilter.years].sort((a, b) => parseInt(a) - parseInt(b));
+                                              const text = sortedYears.join(", ");
+                                              return text.length > 20 ? text.slice(0, 17) + "..." : text;
+                                            })()
+                                        }
+                                      </span>
+                                    </Button>
+                                  </PopoverTrigger>
+                                  <PopoverContent className="w-80 p-0">
+                                    <Command>
+                                      <CommandInput placeholder="Buscar ano..." />
+                                      <CommandList>
+                                        <CommandEmpty>Nenhum ano.</CommandEmpty>
+                                        <CommandGroup>
+                                          {availableYears.map((year) => (
+                                            <CommandItem
+                                              key={year}
+                                              onSelect={() => {
+                                                setFilters(prev => ({
+                                                  ...prev,
+                                                  dateFilter: {
+                                                    ...prev.dateFilter,
+                                                    years: prev.dateFilter.years.includes(year.toString())
+                                                      ? prev.dateFilter.years.filter(y => y !== year.toString())
+                                                      : [...prev.dateFilter.years, year.toString()]
+                                                  }
+                                                }));
+                                              }}
+                                            >
+                                              <Check
+                                                className={`mr-2 h-4 w-4 ${filters.dateFilter.years.includes(year.toString()) ? "opacity-100" : "opacity-0"
+                                                  }`}
+                                              />
+                                              {year}
+                                            </CommandItem>
+                                          ))}
+                                        </CommandGroup>
+                                      </CommandList>
+                                    </Command>
+                                  </PopoverContent>
+                                </Popover>
+                                {filters.dateFilter.years.length > 0 && (
+                                  <Button variant="ghost" size="sm" onClick={() => setFilters(prev => ({ ...prev, dateFilter: { ...prev.dateFilter, years: [] } }))}>
+                                    <X className="h-4 w-4" />
+                                  </Button>
+                                )}
+                              </div>
+                            </div>
+                            <div className="space-y-2">
+                              <label className="text-sm font-medium">Meses</label>
+                              <div className="flex gap-2">
+                                <Popover>
+                                  <PopoverTrigger asChild>
+                                    <Button variant="outline" className="flex-1 min-w-0 justify-start transition-all duration-200 hover:scale-105 hover:shadow-md">
+                                      <span className="truncate">
+                                        {filters.dateFilter.months.length === 0
+                                          ? "Selecionar meses"
+                                          : filters.dateFilter.months.length === 12
+                                            ? "Todos"
+                                            : (() => {
+                                              const monthLabels = [
+                                                { value: '1', label: 'Jan' },
+                                                { value: '2', label: 'Fev' },
+                                                { value: '3', label: 'Mar' },
+                                                { value: '4', label: 'Abr' },
+                                                { value: '5', label: 'Mai' },
+                                                { value: '6', label: 'Jun' },
+                                                { value: '7', label: 'Jul' },
+                                                { value: '8', label: 'Ago' },
+                                                { value: '9', label: 'Set' },
+                                                { value: '10', label: 'Out' },
+                                                { value: '11', label: 'Nov' },
+                                                { value: '12', label: 'Dez' },
+                                              ];
+                                              const sortedMonths = [...filters.dateFilter.months].sort((a, b) => parseInt(a) - parseInt(b));
+                                              const text = sortedMonths.map(m => monthLabels.find(ml => ml.value === m)?.label).join(", ");
+                                              return text.length > 20 ? text.slice(0, 17) + "..." : text;
+                                            })()
+                                        }
+                                      </span>
+                                    </Button>
+                                  </PopoverTrigger>
+                                  <PopoverContent className="w-80 p-0">
+                                    <Command>
+                                      <CommandInput placeholder="Buscar mês..." />
+                                      <CommandList>
+                                        <CommandEmpty>Nenhum mês.</CommandEmpty>
+                                        <CommandGroup>
+                                          {[
+                                            { value: '1', label: 'Janeiro' },
+                                            { value: '2', label: 'Fevereiro' },
+                                            { value: '3', label: 'Março' },
+                                            { value: '4', label: 'Abril' },
+                                            { value: '5', label: 'Maio' },
+                                            { value: '6', label: 'Junho' },
+                                            { value: '7', label: 'Julho' },
+                                            { value: '8', label: 'Agosto' },
+                                            { value: '9', label: 'Setembro' },
+                                            { value: '10', label: 'Outubro' },
+                                            { value: '11', label: 'Novembro' },
+                                            { value: '12', label: 'Dezembro' },
+                                          ].map((month) => (
+                                            <CommandItem
+                                              key={month.value}
+                                              onSelect={() => {
+                                                setFilters(prev => ({
+                                                  ...prev,
+                                                  dateFilter: {
+                                                    ...prev.dateFilter,
+                                                    months: prev.dateFilter.months.includes(month.value)
+                                                      ? prev.dateFilter.months.filter(m => m !== month.value)
+                                                      : [...prev.dateFilter.months, month.value]
+                                                  }
+                                                }));
+                                              }}
+                                            >
+                                              <Check
+                                                className={`mr-2 h-4 w-4 ${filters.dateFilter.months.includes(month.value) ? "opacity-100" : "opacity-0"
+                                                  }`}
+                                              />
+                                              {month.label}
+                                            </CommandItem>
+                                          ))}
+                                        </CommandGroup>
+                                      </CommandList>
+                                    </Command>
+                                  </PopoverContent>
+                                </Popover>
+                                {filters.dateFilter.months.length > 0 && (
+                                  <Button variant="ghost" size="sm" onClick={() => setFilters(prev => ({ ...prev, dateFilter: { ...prev.dateFilter, months: [] } }))}>
+                                    <X className="h-4 w-4" />
+                                  </Button>
+                                )}
+                              </div>
                             </div>
                           </div>
+                        )}
+
+                        {filters.dateFilter.mode === 'range' && (
                           <div className="space-y-2">
-                            <label className="text-sm font-medium">Data final</label>
-                            <div className="flex gap-2">
-                              <Input
-                                type="date"
-                                value={filters.dateFilter.to}
-                                onChange={(e) =>
-                                  setFilters(prev => ({
-                                    ...prev,
-                                    dateFilter: { ...prev.dateFilter, to: e.target.value }
-                                  }))
-                                }
-                                className="flex-1"
-                              />
-                              {filters.dateFilter.to && (
-                                <Button variant="ghost" size="sm" onClick={() => setFilters(prev => ({ ...prev, dateFilter: { ...prev.dateFilter, to: '' } }))}>
-                                  <X className="h-4 w-4" />
-                                </Button>
-                              )}
+                            <div className="space-y-2">
+                              <label className="text-sm font-medium">Data inicial</label>
+                              <div className="flex gap-2">
+                                <Input
+                                  type="date"
+                                  value={filters.dateFilter.from}
+                                  onChange={(e) =>
+                                    setFilters(prev => ({
+                                      ...prev,
+                                      dateFilter: { ...prev.dateFilter, from: e.target.value }
+                                    }))
+                                  }
+                                  className="flex-1"
+                                />
+                                {filters.dateFilter.from && (
+                                  <Button variant="ghost" size="sm" onClick={() => setFilters(prev => ({ ...prev, dateFilter: { ...prev.dateFilter, from: '' } }))}>
+                                    <X className="h-4 w-4" />
+                                  </Button>
+                                )}
+                              </div>
+                            </div>
+                            <div className="space-y-2">
+                              <label className="text-sm font-medium">Data final</label>
+                              <div className="flex gap-2">
+                                <Input
+                                  type="date"
+                                  value={filters.dateFilter.to}
+                                  onChange={(e) =>
+                                    setFilters(prev => ({
+                                      ...prev,
+                                      dateFilter: { ...prev.dateFilter, to: e.target.value }
+                                    }))
+                                  }
+                                  className="flex-1"
+                                />
+                                {filters.dateFilter.to && (
+                                  <Button variant="ghost" size="sm" onClick={() => setFilters(prev => ({ ...prev, dateFilter: { ...prev.dateFilter, to: '' } }))}>
+                                    <X className="h-4 w-4" />
+                                  </Button>
+                                )}
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      )}
-                    </div>
-                  </PopoverContent>
-                </Popover>
-              </div>
-              <div className={`flex flex-col gap-2 ${filtersOpen ? 'animate-in fade-in slide-in-from-left-2 duration-400 fill-mode-both' : 'animate-out fade-out slide-out-to-left-2 duration-300 fill-mode-both'}`} style={{ animationDelay: filtersOpen ? '50ms' : '300ms' }}>
-                <label className="text-sm font-medium">Categoria</label>
-                <div className="flex gap-2">
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button variant="outline" className="flex-1 min-w-0 justify-start transition-all duration-200 hover:scale-105 hover:shadow-md">
-                        <span className="truncate">
-                          {filters.category.length === 0
-                            ? "Selecionar categorias"
-                            : filters.category.length === CATEGORIES.length
-                            ? "Todas"
-                            : (() => {
-                                const text = filters.category.join(", ");
+                        )}
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+                </div>
+                <div className={`flex flex-col gap-2 ${filtersOpen ? 'animate-in fade-in slide-in-from-left-2 duration-400 fill-mode-both' : 'animate-out fade-out slide-out-to-left-2 duration-300 fill-mode-both'}`} style={{ animationDelay: filtersOpen ? '50ms' : '300ms' }}>
+                  <label className="text-sm font-medium">Categoria</label>
+                  <div className="flex gap-2">
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button variant="outline" className="flex-1 min-w-0 justify-start transition-all duration-200 hover:scale-105 hover:shadow-md">
+                          <span className="truncate">
+                            {filters.category.length === 0
+                              ? "Selecionar categorias"
+                              : filters.category.length === CATEGORIES.length
+                                ? "Todas"
+                                : (() => {
+                                  const text = filters.category.join(", ");
+                                  return text.length > 20 ? text.slice(0, 17) + "..." : text;
+                                })()
+                            }
+                          </span>
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-80 p-0">
+                        <Command>
+                          <CommandInput placeholder="Buscar categoria..." />
+                          <CommandList>
+                            <CommandEmpty>Nenhuma categoria encontrada.</CommandEmpty>
+                            <CommandGroup>
+                              {CATEGORIES.map((cat) => (
+                                <CommandItem
+                                  key={cat}
+                                  onSelect={() => {
+                                    setFilters(prev => ({
+                                      ...prev,
+                                      category: prev.category.includes(cat)
+                                        ? prev.category.filter(c => c !== cat)
+                                        : [...prev.category, cat]
+                                    }));
+                                  }}
+                                >
+                                  <Check
+                                    className={`mr-2 h-4 w-4 ${filters.category.includes(cat) ? "opacity-100" : "opacity-0"
+                                      }`}
+                                  />
+                                  {cat}
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
+                    {filters.category.length > 0 && (
+                      <Button variant="ghost" size="sm" onClick={() => setFilters(prev => ({ ...prev, category: [] }))}>
+                        <X className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                </div>
+                <div className={`flex flex-col gap-2 ${filtersOpen ? 'animate-in fade-in slide-in-from-left-2 duration-400 fill-mode-both' : 'animate-out fade-out slide-out-to-left-2 duration-300 fill-mode-both'}`} style={{ animationDelay: filtersOpen ? '25ms' : '325ms' }}>
+                  <label className="text-sm font-medium">Método de Pagamento</label>
+                  <div className="flex gap-2">
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button variant="outline" className="flex-1 justify-start">
+                          {filters.paymentMethod.length === 0
+                            ? "Selecionar métodos"
+                            : filters.paymentMethod.length === PAYMENT_METHODS.length
+                              ? "Todos"
+                              : (() => {
+                                const text = filters.paymentMethod.join(", ");
                                 return text.length > 20 ? text.slice(0, 17) + "..." : text;
                               })()
                           }
-                        </span>
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-56 p-0">
+                        <Command>
+                          <CommandInput placeholder="Buscar método..." />
+                          <CommandList>
+                            <CommandEmpty>Nenhum método encontrado.</CommandEmpty>
+                            <CommandGroup>
+                              {PAYMENT_METHODS.map((method) => (
+                                <CommandItem
+                                  key={method}
+                                  onSelect={() => {
+                                    setFilters(prev => ({
+                                      ...prev,
+                                      paymentMethod: prev.paymentMethod.includes(method)
+                                        ? prev.paymentMethod.filter(m => m !== method)
+                                        : [...prev.paymentMethod, method]
+                                    }));
+                                  }}
+                                >
+                                  <Check
+                                    className={`mr-2 h-4 w-4 ${filters.paymentMethod.includes(method) ? "opacity-100" : "opacity-0"
+                                      }`}
+                                  />
+                                  {method}
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
+                    {filters.paymentMethod.length > 0 && (
+                      <Button variant="ghost" size="sm" onClick={() => setFilters(prev => ({ ...prev, paymentMethod: [] }))}>
+                        <X className="h-4 w-4" />
                       </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-80 p-0">
-                      <Command>
-                        <CommandInput placeholder="Buscar categoria..." />
-                        <CommandList>
-                          <CommandEmpty>Nenhuma categoria encontrada.</CommandEmpty>
-                          <CommandGroup>
-                            {CATEGORIES.map((cat) => (
-                              <CommandItem
-                                key={cat}
-                                onSelect={() => {
-                                  setFilters(prev => ({
-                                    ...prev,
-                                    category: prev.category.includes(cat)
-                                      ? prev.category.filter(c => c !== cat)
-                                      : [...prev.category, cat]
-                                  }));
-                                }}
-                              >
-                                <Check
-                                  className={`mr-2 h-4 w-4 ${
-                                    filters.category.includes(cat) ? "opacity-100" : "opacity-0"
-                                  }`}
-                                />
-                                {cat}
-                              </CommandItem>
-                            ))}
-                          </CommandGroup>
-                        </CommandList>
-                      </Command>
-                    </PopoverContent>
-                  </Popover>
-                  {filters.category.length > 0 && (
-                    <Button variant="ghost" size="sm" onClick={() => setFilters(prev => ({ ...prev, category: [] }))}>
-                      <X className="h-4 w-4" />
-                    </Button>
-                  )}
+                    )}
+                  </div>
                 </div>
-              </div>
-              <div className={`flex flex-col gap-2 ${filtersOpen ? 'animate-in fade-in slide-in-from-left-2 duration-400 fill-mode-both' : 'animate-out fade-out slide-out-to-left-2 duration-300 fill-mode-both'}`} style={{ animationDelay: filtersOpen ? '25ms' : '325ms' }}>
-                <label className="text-sm font-medium">Método de Pagamento</label>
-                <div className="flex gap-2">
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button variant="outline" className="flex-1 justify-start">
-                        {filters.paymentMethod.length === 0
-                          ? "Selecionar métodos"
-                          : filters.paymentMethod.length === PAYMENT_METHODS.length
-                          ? "Todos"
-                          : (() => {
-                              const text = filters.paymentMethod.join(", ");
-                              return text.length > 20 ? text.slice(0, 17) + "..." : text;
-                            })()
-                        }
+                <div className={`flex flex-col gap-2 ${filtersOpen ? 'animate-in fade-in slide-in-from-left-2 duration-400 fill-mode-both' : 'animate-out fade-out slide-out-to-left-2 duration-300 fill-mode-both'}`} style={{ animationDelay: filtersOpen ? '50ms' : '300ms' }}>
+                  <label className="text-sm font-medium">Conta</label>
+                  <div className="flex gap-2">
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button variant="outline" className="w-full sm:w-48 justify-start">
+                          {filters.account.length === 0
+                            ? "Selecionar contas"
+                            : filters.account.length === availableAccounts.length
+                              ? "Todas"
+                              : (() => {
+                                const text = filters.account.join(", ");
+                                return text.length > 25 ? text.slice(0, 22) + "..." : text;
+                              })()
+                          }
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-64 p-0">
+                        <Command>
+                          <CommandInput placeholder="Buscar conta..." />
+                          <CommandList>
+                            <CommandEmpty>Nenhuma conta encontrada.</CommandEmpty>
+                            <CommandGroup>
+                              {availableAccounts.map((account) => (
+                                <CommandItem
+                                  key={account}
+                                  onSelect={() => {
+                                    setFilters(prev => ({
+                                      ...prev,
+                                      account: prev.account.includes(account)
+                                        ? prev.account.filter(a => a !== account)
+                                        : [...prev.account, account]
+                                    }));
+                                  }}
+                                >
+                                  <Check
+                                    className={`mr-2 h-4 w-4 ${filters.account.includes(account) ? "opacity-100" : "opacity-0"
+                                      }`}
+                                  />
+                                  {account}
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
+                    {filters.account.length > 0 && (
+                      <Button variant="ghost" size="sm" onClick={() => setFilters(prev => ({ ...prev, account: [] }))}>
+                        <X className="h-4 w-4" />
                       </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-56 p-0">
-                      <Command>
-                        <CommandInput placeholder="Buscar método..." />
-                        <CommandList>
-                          <CommandEmpty>Nenhum método encontrado.</CommandEmpty>
-                          <CommandGroup>
-                            {PAYMENT_METHODS.map((method) => (
-                              <CommandItem
-                                key={method}
-                                onSelect={() => {
-                                  setFilters(prev => ({
-                                    ...prev,
-                                    paymentMethod: prev.paymentMethod.includes(method)
-                                      ? prev.paymentMethod.filter(m => m !== method)
-                                      : [...prev.paymentMethod, method]
-                                  }));
-                                }}
-                              >
-                                <Check
-                                  className={`mr-2 h-4 w-4 ${
-                                    filters.paymentMethod.includes(method) ? "opacity-100" : "opacity-0"
-                                  }`}
-                                />
-                                {method}
-                              </CommandItem>
-                            ))}
-                          </CommandGroup>
-                        </CommandList>
-                      </Command>
-                    </PopoverContent>
-                  </Popover>
-                  {filters.paymentMethod.length > 0 && (
-                    <Button variant="ghost" size="sm" onClick={() => setFilters(prev => ({ ...prev, paymentMethod: [] }))}>
-                      <X className="h-4 w-4" />
-                    </Button>
-                  )}
+                    )}
+                  </div>
                 </div>
-              </div>
-              <div className={`flex flex-col gap-2 ${filtersOpen ? 'animate-in fade-in slide-in-from-left-2 duration-400 fill-mode-both' : 'animate-out fade-out slide-out-to-left-2 duration-300 fill-mode-both'}`} style={{ animationDelay: filtersOpen ? '50ms' : '300ms' }}>
-                <label className="text-sm font-medium">Conta</label>
-                <div className="flex gap-2">
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button variant="outline" className="w-full sm:w-48 justify-start">
-                        {filters.account.length === 0
-                          ? "Selecionar contas"
-                          : filters.account.length === availableAccounts.length
-                          ? "Todas"
-                          : (() => {
-                              const text = filters.account.join(", ");
-                              return text.length > 25 ? text.slice(0, 22) + "..." : text;
-                            })()
-                        }
+                <div className={`flex flex-col gap-2 ${filtersOpen ? 'animate-in fade-in slide-in-from-left-2 duration-400 fill-mode-both' : 'animate-out fade-out slide-out-to-left-2 duration-300 fill-mode-both'}`} style={{ animationDelay: filtersOpen ? '75ms' : '275ms' }}>
+                  <label className="text-sm font-medium">Localização</label>
+                  <div className="flex gap-2">
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button variant="outline" className="w-full sm:w-48 justify-start">
+                          {filters.location.length === 0
+                            ? "Selecionar localizações"
+                            : filters.location.length === availableLocations.length
+                              ? "Todas"
+                              : (() => {
+                                const text = filters.location.join(", ");
+                                return text.length > 25 ? text.slice(0, 22) + "..." : text;
+                              })()
+                          }
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-64 p-0">
+                        <Command>
+                          <CommandInput placeholder="Buscar localização..." />
+                          <CommandList>
+                            <CommandEmpty>Nenhuma localização encontrada.</CommandEmpty>
+                            <CommandGroup>
+                              {availableLocations.map((location) => (
+                                <CommandItem
+                                  key={location}
+                                  onSelect={() => {
+                                    setFilters(prev => ({
+                                      ...prev,
+                                      location: prev.location.includes(location)
+                                        ? prev.location.filter(l => l !== location)
+                                        : [...prev.location, location]
+                                    }));
+                                  }}
+                                >
+                                  <Check
+                                    className={`mr-2 h-4 w-4 ${filters.location.includes(location) ? "opacity-100" : "opacity-0"
+                                      }`}
+                                  />
+                                  {location}
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
+                    {filters.location.length > 0 && (
+                      <Button variant="ghost" size="sm" onClick={() => setFilters(prev => ({ ...prev, location: [] }))}>
+                        <X className="h-4 w-4" />
                       </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-64 p-0">
-                      <Command>
-                        <CommandInput placeholder="Buscar conta..." />
-                        <CommandList>
-                          <CommandEmpty>Nenhuma conta encontrada.</CommandEmpty>
-                          <CommandGroup>
-                            {availableAccounts.map((account) => (
-                              <CommandItem
-                                key={account}
-                                onSelect={() => {
-                                  setFilters(prev => ({
-                                    ...prev,
-                                    account: prev.account.includes(account)
-                                      ? prev.account.filter(a => a !== account)
-                                      : [...prev.account, account]
-                                  }));
-                                }}
-                              >
-                                <Check
-                                  className={`mr-2 h-4 w-4 ${
-                                    filters.account.includes(account) ? "opacity-100" : "opacity-0"
-                                  }`}
-                                />
-                                {account}
-                              </CommandItem>
-                            ))}
-                          </CommandGroup>
-                        </CommandList>
-                      </Command>
-                    </PopoverContent>
-                  </Popover>
-                  {filters.account.length > 0 && (
-                    <Button variant="ghost" size="sm" onClick={() => setFilters(prev => ({ ...prev, account: [] }))}>
-                      <X className="h-4 w-4" />
-                    </Button>
-                  )}
+                    )}
+                  </div>
                 </div>
-              </div>
-              <div className={`flex flex-col gap-2 ${filtersOpen ? 'animate-in fade-in slide-in-from-left-2 duration-400 fill-mode-both' : 'animate-out fade-out slide-out-to-left-2 duration-300 fill-mode-both'}`} style={{ animationDelay: filtersOpen ? '75ms' : '275ms' }}>
-                <label className="text-sm font-medium">Localização</label>
-                <div className="flex gap-2">
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button variant="outline" className="w-full sm:w-48 justify-start">
-                        {filters.location.length === 0
-                          ? "Selecionar localizações"
-                          : filters.location.length === availableLocations.length
-                          ? "Todas"
-                          : (() => {
-                              const text = filters.location.join(", ");
-                              return text.length > 25 ? text.slice(0, 22) + "..." : text;
-                            })()
-                        }
+                <div className={`flex flex-col gap-2 ${filtersOpen ? 'animate-in fade-in slide-in-from-left-2 duration-400 fill-mode-both' : 'animate-out fade-out slide-out-to-left-2 duration-300 fill-mode-both'}`} style={{ animationDelay: filtersOpen ? '100ms' : '250ms' }}>
+                  <label className="text-sm font-medium">Descrição</label>
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="Descrição"
+                      value={filters.description}
+                      onChange={(e) => setFilters(prev => ({ ...prev, description: e.target.value }))}
+                      className="w-full sm:w-40"
+                    />
+                    {filters.description && (
+                      <Button variant="ghost" size="sm" onClick={() => setFilters(prev => ({ ...prev, description: '' }))}>
+                        <X className="h-4 w-4" />
                       </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-64 p-0">
-                      <Command>
-                        <CommandInput placeholder="Buscar localização..." />
-                        <CommandList>
-                          <CommandEmpty>Nenhuma localização encontrada.</CommandEmpty>
-                          <CommandGroup>
-                            {availableLocations.map((location) => (
-                              <CommandItem
-                                key={location}
-                                onSelect={() => {
-                                  setFilters(prev => ({
-                                    ...prev,
-                                    location: prev.location.includes(location)
-                                      ? prev.location.filter(l => l !== location)
-                                      : [...prev.location, location]
-                                  }));
-                                }}
-                              >
-                                <Check
-                                  className={`mr-2 h-4 w-4 ${
-                                    filters.location.includes(location) ? "opacity-100" : "opacity-0"
-                                  }`}
-                                />
-                                {location}
-                              </CommandItem>
-                            ))}
-                          </CommandGroup>
-                        </CommandList>
-                      </Command>
-                    </PopoverContent>
-                  </Popover>
-                  {filters.location.length > 0 && (
-                    <Button variant="ghost" size="sm" onClick={() => setFilters(prev => ({ ...prev, location: [] }))}>
-                      <X className="h-4 w-4" />
-                    </Button>
-                  )}
+                    )}
+                  </div>
                 </div>
-              </div>
-              <div className={`flex flex-col gap-2 ${filtersOpen ? 'animate-in fade-in slide-in-from-left-2 duration-400 fill-mode-both' : 'animate-out fade-out slide-out-to-left-2 duration-300 fill-mode-both'}`} style={{ animationDelay: filtersOpen ? '100ms' : '250ms' }}>
-                <label className="text-sm font-medium">Descrição</label>
-            <div className="flex gap-2">
-              <Input
-                placeholder="Descrição"
-                value={filters.description}
-                onChange={(e) => setFilters(prev => ({ ...prev, description: e.target.value }))}
-                className="w-full sm:w-40"
-              />
-              {filters.description && (
-                <Button variant="ghost" size="sm" onClick={() => setFilters(prev => ({ ...prev, description: '' }))}>
-                  <X className="h-4 w-4" />
-                </Button>
-              )}
-            </div>
-          </div>
-              <div className={`flex flex-col gap-2 ${filtersOpen ? 'animate-in fade-in slide-in-from-left-2 duration-400 fill-mode-both' : 'animate-out fade-out slide-out-to-left-2 duration-300 fill-mode-both'}`} style={{ animationDelay: filtersOpen ? '125ms' : '225ms' }}>
-                <label className="text-sm font-medium">Observações</label>
-            <div className="flex gap-2">
-              <Input
-                placeholder="Observações"
-                value={filters.notes}
-                onChange={(e) => setFilters(prev => ({ ...prev, notes: e.target.value }))}
-                className="w-full sm:w-40"
-              />
-              {filters.notes && (
-                <Button variant="ghost" size="sm" onClick={() => setFilters(prev => ({ ...prev, notes: '' }))}>
-                  <X className="h-4 w-4" />
-                </Button>
-              )}
-            </div>
-          </div>
-              <div className={`flex flex-col gap-2 ${filtersOpen ? 'animate-in fade-in slide-in-from-left-2 duration-400 fill-mode-both' : 'animate-out fade-out slide-out-to-left-2 duration-300 fill-mode-both'}`} style={{ animationDelay: filtersOpen ? '150ms' : '200ms' }}>
-                <label className="text-sm font-medium">Tipo de Despesa</label>
-                <div className="flex gap-2">
-                  <Button
-                    variant={filters.isFixed === true ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setFilters(prev => ({ ...prev, isFixed: prev.isFixed === true ? undefined : true }))}
-                    className="flex-1"
-                  >
-                    Fixo
-                  </Button>
-                  <Button
-                    variant={filters.isFixed === false ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setFilters(prev => ({ ...prev, isFixed: prev.isFixed === false ? undefined : false }))}
-                    className="flex-1"
-                  >
-                    Não Fixo
+                <div className={`flex flex-col gap-2 ${filtersOpen ? 'animate-in fade-in slide-in-from-left-2 duration-400 fill-mode-both' : 'animate-out fade-out slide-out-to-left-2 duration-300 fill-mode-both'}`} style={{ animationDelay: filtersOpen ? '125ms' : '225ms' }}>
+                  <label className="text-sm font-medium">Observações</label>
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="Observações"
+                      value={filters.notes}
+                      onChange={(e) => setFilters(prev => ({ ...prev, notes: e.target.value }))}
+                      className="w-full sm:w-40"
+                    />
+                    {filters.notes && (
+                      <Button variant="ghost" size="sm" onClick={() => setFilters(prev => ({ ...prev, notes: '' }))}>
+                        <X className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                </div>
+                <div className={`flex flex-col gap-2 ${filtersOpen ? 'animate-in fade-in slide-in-from-left-2 duration-400 fill-mode-both' : 'animate-out fade-out slide-out-to-left-2 duration-300 fill-mode-both'}`} style={{ animationDelay: filtersOpen ? '150ms' : '200ms' }}>
+                  <label className="text-sm font-medium">Tipo de Despesa</label>
+                  <div className="flex gap-2">
+                    <Button
+                      variant={filters.isFixed === true ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setFilters(prev => ({ ...prev, isFixed: prev.isFixed === true ? undefined : true }))}
+                      className="flex-1"
+                    >
+                      Fixo
+                    </Button>
+                    <Button
+                      variant={filters.isFixed === false ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setFilters(prev => ({ ...prev, isFixed: prev.isFixed === false ? undefined : false }))}
+                      className="flex-1"
+                    >
+                      Não Fixo
+                    </Button>
+                  </div>
+                </div>
+                <div className={`flex justify-end sm:col-span-1 md:col-span-2 lg:col-span-3 xl:col-span-4 2xl:col-span-1 2xl:ml-auto ${filtersOpen ? 'animate-in fade-in slide-in-from-bottom-2 duration-400 fill-mode-both' : 'animate-out fade-out slide-out-to-bottom-2 duration-300 fill-mode-both'}`} style={{ animationDelay: filtersOpen ? '400ms' : '0ms' }}>
+                  <Button className="w-full sm:w-auto transition-all duration-200 hover:scale-105 hover:shadow-md" onClick={() => setFilters(prev => ({
+                    ...prev,
+                    category: [],
+                    description: '',
+                    paymentMethod: [],
+                    account: [],
+                    location: [],
+                    notes: '',
+                    dateFilter: {
+                      mode: 'all',
+                      year: '',
+                      month: '',
+                      from: '',
+                      to: '',
+                    },
+                  }))}>
+                    Limpar Filtros
                   </Button>
                 </div>
               </div>
-              <div className={`flex justify-end sm:col-span-1 md:col-span-2 lg:col-span-3 xl:col-span-4 2xl:col-span-1 2xl:ml-auto ${filtersOpen ? 'animate-in fade-in slide-in-from-bottom-2 duration-400 fill-mode-both' : 'animate-out fade-out slide-out-to-bottom-2 duration-300 fill-mode-both'}`} style={{ animationDelay: filtersOpen ? '400ms' : '0ms' }}>
-                <Button className="w-full sm:w-auto transition-all duration-200 hover:scale-105 hover:shadow-md" onClick={() => setFilters(prev => ({
-                  ...prev,
-                  category: [],
-                  description: '',
-                  paymentMethod: [],
-                  account: [],
-                  location: [],
-                  notes: '',
-                  dateFilter: {
-                    mode: 'all',
-                    year: '',
-                    month: '',
-                    from: '',
-                    to: '',
-                  },
-                }))}>
-                  Limpar Filtros
-                </Button>
-              </div>
-        </div>
             </div>
           </div>
         </CollapsibleContent>
       </Collapsible>
 
-      <div className="grid gap-3 sm:gap-4 grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+      <div className="grid gap-3 sm:gap-4 grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         <StatCard
           title="Total de Despesas"
           value={formatCurrency(filteredStats?.totalSpent || 0)}
@@ -1228,13 +1220,6 @@ export default function Dashboard() {
           value={formatCurrency(filteredStats?.monthlySpent || 0)}
           icon={Calendar}
           description={`${monthStart} - ${monthEnd}`}
-          loading={allExpensesLoading || statsLoading}
-        />
-        <StatCard
-          title="Despesas Fixas"
-          value={formatCurrency(filteredStats?.fixedExpenses || 0)}
-          icon={Repeat}
-          description="Despesas recorrentes"
           loading={allExpensesLoading || statsLoading}
         />
         <StatCard
@@ -1327,11 +1312,11 @@ export default function Dashboard() {
                 // Para telas xl+, sempre mostrar ambas as seções empilhadas
                 // Para telas menores, mostrar apenas seções com conteúdo
                 const isLargeScreen = typeof window !== 'undefined' && window.innerWidth >= 1280;
-                const sectionsToShow = isLargeScreen 
-                  ? sections 
-                  : sections.filter(section => 
-                      (section.data && section.data.length > 0) || section.loading
-                    );
+                const sectionsToShow = isLargeScreen
+                  ? sections
+                  : sections.filter(section =>
+                    (section.data && section.data.length > 0) || section.loading
+                  );
 
                 return sectionsToShow.map((section) => (
                   <div key={section.key}>
