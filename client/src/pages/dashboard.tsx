@@ -506,7 +506,9 @@ export default function Dashboard() {
       (!filters.notes || (expense.notes && normalizeText(expense.notes).includes(normalizeText(filters.notes)))) &&
       dateMatch &&
       // Despesas fixas pendentes seguem as mesmas regras de filtro que as outras despesas
-      (!expense.isFixed || expense.isPaid)
+      (!expense.isFixed || expense.isPaid) &&
+      // Excluir despesas com parcelas completadas
+      !expense.isCompleted
     );
   }) || [];
 

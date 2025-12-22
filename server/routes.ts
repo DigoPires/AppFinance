@@ -20,34 +20,41 @@ import { resetPasswordSchema, verifyResetCodeSchema, loginSchema, updateIncomeSc
 
 const resetCodes = new Map<string, { code: string; expires: Date }>();
 
-// Função para calcular qual parcela deve ser mostrada no mês atual
-function getCurrentInstallment(expense: any) {
-  if (!expense.installments || expense.installments <= 1) {
-    return { installmentNumber: 1, totalInstallments: 1, installmentValue: parseFloat(expense.totalValue) };
-  }
+// Função para calcular qual parcela deve ser mostrada no mês atual - movida para SQL
+// function getCurrentInstallment(expense: any) {
+//   if (!expense.installments || expense.installments <= 1) {
+//     return { installmentNumber: 1, totalInstallments: 1, installmentValue: parseFloat(expense.totalValue), isCompleted: false };
+//   }
 
-  const purchaseDate = new Date(expense.date);
-  const currentDate = new Date();
+//   const purchaseDate = new Date(expense.date);
+//   const currentDate = new Date();
   
-  // Calcular diferença em meses
-  const monthsDiff = (currentDate.getFullYear() - purchaseDate.getFullYear()) * 12 + 
-                    (currentDate.getMonth() - purchaseDate.getMonth());
+//   // Calcular diferença em meses
+//   const monthsDiff = (currentDate.getFullYear() - purchaseDate.getFullYear()) * 12 + 
+//                     (currentDate.getMonth() - purchaseDate.getMonth());
   
-  // Determinar qual parcela deve ser paga neste mês
-  const currentInstallment = Math.min(monthsDiff + 1, expense.installments);
+//   // Determinar qual parcela deve ser paga neste mês
+//   const currentInstallment = monthsDiff + 1;
   
-  if (currentInstallment <= 0 || currentInstallment > expense.installments) {
-    return { installmentNumber: 1, totalInstallments: expense.installments, installmentValue: 0 };
-  }
+//   // Se já passou do número total de parcelas, está completo
+//   if (currentInstallment > expense.installments) {
+//     return { 
+//       installmentNumber: expense.installments, 
+//       totalInstallments: expense.installments, 
+//       installmentValue: parseFloat(expense.totalValue) / expense.installments,
+//       isCompleted: true 
+//     };
+//   }
 
-  const installmentValue = parseFloat(expense.totalValue) / expense.installments;
+//   const installmentValue = parseFloat(expense.totalValue) / expense.installments;
   
-  return {
-    installmentNumber: currentInstallment,
-    totalInstallments: expense.installments,
-    installmentValue
-  };
-}
+//   return {
+//     installmentNumber: currentInstallment,
+//     totalInstallments: expense.installments,
+//     installmentValue,
+//     isCompleted: false
+//   };
+// }
 
 export async function registerRoutes(
   httpServer: Server,
@@ -363,14 +370,15 @@ export async function registerRoutes(
       const totalPages = Math.ceil(result.total / (limit ? parseInt(limit as string) : 10));
 
       const expensesWithInstallments = result.expenses.map(expense => {
-        const installmentInfo = getCurrentInstallment(expense);
+        const installmentValue = parseFloat(expense.totalValue) / (expense.installments || 1);
         return {
           ...expense,
-          currentInstallment: installmentInfo.installmentNumber,
-          totalInstallments: installmentInfo.totalInstallments,
-          currentInstallmentValue: installmentInfo.installmentValue,
+          currentInstallment: expense.currentInstallment,
+          totalInstallments: expense.installments || 1,
+          currentInstallmentValue: installmentValue, // Sempre mostrar o valor da parcela na tabela
+          isCompleted: expense.isCompleted,
           displayDescription: expense.installments && expense.installments > 1 
-            ? `${expense.description} (${installmentInfo.installmentNumber}/${installmentInfo.totalInstallments})`
+            ? `${expense.description} (${expense.currentInstallment}/${expense.installments})`
             : expense.description
         };
       });

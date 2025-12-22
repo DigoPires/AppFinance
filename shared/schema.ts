@@ -208,6 +208,7 @@ export type ExpenseWithInstallments = Expense & {
   totalInstallments?: number;
   currentInstallmentValue?: number;
   displayDescription?: string;
+  isCompleted?: boolean;
 };
 
 export type InsertIncome = z.infer<typeof insertIncomeSchema>;

@@ -193,7 +193,11 @@ export class DatabaseStorage implements IStorage {
 
     const [expensesList, countResult] = await Promise.all([
       db
-        .select()
+        .select({
+          ...expenses,
+          currentInstallment: sql<number>`CASE WHEN ${expenses.installments} IS NULL OR ${expenses.installments} <= 1 THEN 1 ELSE LEAST( ((EXTRACT(YEAR FROM CURRENT_DATE) - EXTRACT(YEAR FROM ${expenses.date})) * 12 + (EXTRACT(MONTH FROM CURRENT_DATE) - EXTRACT(MONTH FROM ${expenses.date}))) + 1, ${expenses.installments} ) END`,
+          isCompleted: sql<boolean>`CASE WHEN ${expenses.installments} IS NULL OR ${expenses.installments} <= 1 THEN false WHEN ((EXTRACT(YEAR FROM CURRENT_DATE) - EXTRACT(YEAR FROM ${expenses.date})) * 12 + (EXTRACT(MONTH FROM CURRENT_DATE) - EXTRACT(MONTH FROM ${expenses.date}))) + 1 > ${expenses.installments} THEN true ELSE false END`,
+        })
         .from(expenses)
         .where(whereClause)
         .orderBy(orderByClause)
@@ -298,17 +302,6 @@ export class DatabaseStorage implements IStorage {
     }
     const expenseWhereClause = and(...expenseConditions);
 
-    // Get all installment expenses to check which ones have payments due this month
-    const allInstallmentExpenses = await db
-      .select()
-      .from(expenses)
-      .where(
-        and(
-          expenseWhereClause,
-          sql`${expenses.installments} IS NOT NULL AND ${expenses.installments} > 1`
-        )
-      );
-
     // Get non-installment expenses from current month
     const monthlyNonInstallmentExpenses = await db
       .select()
@@ -330,18 +323,19 @@ export class DatabaseStorage implements IStorage {
       monthlySpent += parseFloat(expense.totalValue);
     }
 
-    // Add installment payments due this month
-    for (const expense of allInstallmentExpenses) {
-      const purchaseDate = new Date(expense.date);
-      const currentDate = new Date();
-      const monthsDiff = (currentDate.getFullYear() - purchaseDate.getFullYear()) * 12 +
-                        (currentDate.getMonth() - purchaseDate.getMonth());
+    // Add installment payments due this month (only active installments)
+    const [monthlyInstallmentResult] = await db
+      .select({ total: sql<number>`COALESCE(SUM(${expenses.totalValue} / ${expenses.installments}), 0)` })
+      .from(expenses)
+      .where(
+        and(
+          expenseWhereClause,
+          sql`${expenses.installments} IS NOT NULL AND ${expenses.installments} > 1`,
+          sql`((EXTRACT(YEAR FROM CURRENT_DATE) - EXTRACT(YEAR FROM ${expenses.date})) * 12 + (EXTRACT(MONTH FROM CURRENT_DATE) - EXTRACT(MONTH FROM ${expenses.date}))) + 1 <= ${expenses.installments}`
+        )
+      );
 
-      const currentInstallment = Math.min(monthsDiff + 1, expense.installments);
-      if (currentInstallment > 0 && currentInstallment <= expense.installments) {
-        monthlySpent += parseFloat(expense.totalValue) / expense.installments;
-      }
-    }
+    monthlySpent += parseFloat(monthlyInstallmentResult.total);
 
     const [totalResult, fixedResult, countResult, incomeResult, incomeCountResult, earningsResult] =
       await Promise.all([
