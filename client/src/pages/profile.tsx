@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth";
-import { User, Lock } from "lucide-react";
+import { User, Lock, Eye, EyeOff } from "lucide-react";
 
 const profileSchema = z.object({
   name: z.string().min(2, "Nome deve ter pelo menos 2 caracteres"),
@@ -48,6 +48,8 @@ export default function ProfilePage() {
   const { user, getAccessToken, updateUser } = useAuth();
   const { toast } = useToast();
   const [resetStep, setResetStep] = useState<'email' | 'verify-code' | 'password' | 'success'>('email');
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [verifiedCode, setVerifiedCode] = useState<string>('');
 
   const profileForm = useForm<ProfileFormData>({
@@ -418,7 +420,28 @@ export default function ProfilePage() {
                       <FormItem>
                         <FormLabel>Nova Senha</FormLabel>
                         <FormControl>
-                          <Input {...field} type="password" data-testid="input-new-password" autoComplete="new-password" />
+                          <div className="relative">
+                            <Input
+                              {...field}
+                              value={field.value ?? ""}
+                              type={showNewPassword ? "text" : "password"}
+                              autoComplete="new-password"
+                              disabled={false}
+                              className="pr-10"
+                              data-testid="input-new-password"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setShowNewPassword((p) => !p)}
+                              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                            >
+                              {showNewPassword ? (
+                                <EyeOff className="h-5 w-5" />
+                              ) : (
+                                <Eye className="h-5 w-5" />
+                              )}
+                            </button>
+                          </div>
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -432,7 +455,28 @@ export default function ProfilePage() {
                       <FormItem>
                         <FormLabel>Confirmar Nova Senha</FormLabel>
                         <FormControl>
-                          <Input {...field} type="password" data-testid="input-confirm-password" autoComplete="new-password" />
+                          <div className="relative">
+                            <Input
+                              {...field}
+                              value={field.value ?? ""}
+                              type={showConfirmPassword ? "text" : "password"}
+                              autoComplete="new-password"
+                              disabled={false}
+                              className="pr-10"
+                              data-testid="input-confirm-password"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setShowConfirmPassword((p) => !p)}
+                              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                            >
+                              {showConfirmPassword ? (
+                                <EyeOff className="h-5 w-5" />
+                              ) : (
+                                <Eye className="h-5 w-5" />
+                              )}
+                            </button>
+                          </div>
                         </FormControl>
                         <FormMessage />
                       </FormItem>

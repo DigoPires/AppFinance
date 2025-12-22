@@ -16,7 +16,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
-import { Lock, ArrowLeft } from "lucide-react";
+import { Lock, ArrowLeft, Eye, EyeOff } from "lucide-react";
 import { Link } from "wouter";
 
 const forgotPasswordSchema = z.object({
@@ -43,6 +43,8 @@ export default function ForgotPasswordPage() {
   const { toast } = useToast();
   const [step, setStep] = useState<'email' | 'verify' | 'password'>('email');
   const [email, setEmail] = useState('');
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const forgotForm = useForm<ForgotPasswordFormData>({
     resolver: zodResolver(forgotPasswordSchema),
@@ -280,7 +282,28 @@ export default function ForgotPasswordPage() {
                     <FormItem>
                       <FormLabel>Nova Senha</FormLabel>
                       <FormControl>
-                        <Input {...field} type="password" placeholder="Digite a nova senha" autoComplete="new-password" />
+                        <div className="relative">
+                          <Input
+                            {...field}
+                            value={field.value ?? ""}
+                            type={showNewPassword ? "text" : "password"}
+                            placeholder="Digite a nova senha"
+                            autoComplete="new-password"
+                            disabled={false}
+                            className="pr-10"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowNewPassword((p) => !p)}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                          >
+                            {showNewPassword ? (
+                              <EyeOff className="h-5 w-5" />
+                            ) : (
+                              <Eye className="h-5 w-5" />
+                            )}
+                          </button>
+                        </div>
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -293,7 +316,28 @@ export default function ForgotPasswordPage() {
                     <FormItem>
                       <FormLabel>Confirmar Nova Senha</FormLabel>
                       <FormControl>
-                        <Input {...field} type="password" placeholder="Confirme a nova senha" autoComplete="new-password" />
+                        <div className="relative">
+                          <Input
+                            {...field}
+                            value={field.value ?? ""}
+                            type={showConfirmPassword ? "text" : "password"}
+                            placeholder="Confirme a nova senha"
+                            autoComplete="new-password"
+                            disabled={false}
+                            className="pr-10"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowConfirmPassword((p) => !p)}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                          >
+                            {showConfirmPassword ? (
+                              <EyeOff className="h-5 w-5" />
+                            ) : (
+                              <Eye className="h-5 w-5" />
+                            )}
+                          </button>
+                        </div>
                       </FormControl>
                       <FormMessage />
                     </FormItem>
