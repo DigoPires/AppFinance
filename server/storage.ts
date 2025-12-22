@@ -12,11 +12,10 @@ import {
   type InsertIncome,
   type Earning,
   type InsertEarning,
-  type InsertIncome,
   type RefreshToken,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, desc, asc, sql, gte, lte } from "drizzle-orm";
+import { eq, and, desc, asc, sql, gte, lte, inArray } from "drizzle-orm";
 
 export interface IStorage {
   getUser(id: number): Promise<User | undefined>;
@@ -65,7 +64,7 @@ export interface IStorage {
   updateIncome(id: number, userId: number, data: Partial<Omit<Income, "id" | "userId" | "createdAt">>): Promise<Income | undefined>;
   deleteIncome(id: number, userId: number): Promise<boolean>;
 
-  getEarnings(userId: number, options?: { sortBy?: string }): Promise<Earning[]>;
+  getEarnings(userId: number, options?: { sortBy?: string; startDate?: string; endDate?: string }): Promise<Earning[]>;
   getEarning(id: number, userId: number): Promise<Earning | undefined>;
   createEarning(earning: Omit<Earning, "id">): Promise<Earning>;
   updateEarning(id: number, userId: number, data: Partial<Omit<Earning, "id" | "userId">>): Promise<Earning | undefined>;
@@ -246,7 +245,17 @@ export class DatabaseStorage implements IStorage {
     return result.length > 0;
   }
 
-  async getExpenseStats(userId: number): Promise<{
+  async getExpenseStats(
+    userId: number,
+    filters: {
+      search?: string;
+      category?: string;
+      startDate?: string;
+      endDate?: string;
+      fixed?: boolean;
+      paid?: boolean;
+    } = {}
+  ): Promise<{
     totalSpent: number;
     monthlySpent: number;
     fixedExpenses: number;
@@ -255,44 +264,99 @@ export class DatabaseStorage implements IStorage {
     monthlyIncome: number;
     incomeCount: number;
   }> {
+    const { search, category, startDate, endDate, fixed, paid } = filters;
     const now = new Date();
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
     const startDateStr = startOfMonth.toISOString().split("T")[0];
     const endDateStr = endOfMonth.toISOString().split("T")[0];
 
-    const [totalResult, monthlyResult, fixedResult, countResult, categoryResult, incomeResult, incomeCountResult, earningsResult] =
+    // Build where conditions for expenses
+    const expenseConditions = [eq(expenses.userId, userId)];
+    if (search) {
+      expenseConditions.push(sql`${expenses.description} LIKE ${`%${search}%`}`);
+    }
+    if (category) {
+      const categories = category.split(',').map(c => c.trim()).filter(c => c.length > 0);
+      if (categories.length === 1) {
+        expenseConditions.push(eq(expenses.category, categories[0]));
+      } else if (categories.length > 1) {
+        expenseConditions.push(inArray(expenses.category, categories));
+      }
+    }
+    if (startDate) {
+      expenseConditions.push(gte(expenses.date, startDate));
+    }
+    if (endDate) {
+      expenseConditions.push(lte(expenses.date, endDate));
+    }
+    if (fixed !== undefined) {
+      expenseConditions.push(eq(expenses.isFixed, fixed));
+    }
+    if (paid !== undefined) {
+      expenseConditions.push(eq(expenses.isPaid, paid));
+    }
+    const expenseWhereClause = and(...expenseConditions);
+
+    // Get all installment expenses to check which ones have payments due this month
+    const allInstallmentExpenses = await db
+      .select()
+      .from(expenses)
+      .where(
+        and(
+          expenseWhereClause,
+          sql`${expenses.installments} IS NOT NULL AND ${expenses.installments} > 1`
+        )
+      );
+
+    // Get non-installment expenses from current month
+    const monthlyNonInstallmentExpenses = await db
+      .select()
+      .from(expenses)
+      .where(
+        and(
+          expenseWhereClause,
+          sql`(${expenses.installments} IS NULL OR ${expenses.installments} <= 1)`,
+          gte(expenses.date, startDateStr),
+          lte(expenses.date, endDateStr)
+        )
+      );
+
+    // Calculate monthly spent considering installments
+    let monthlySpent = 0;
+
+    // Add non-installment expenses from current month
+    for (const expense of monthlyNonInstallmentExpenses) {
+      monthlySpent += parseFloat(expense.totalValue);
+    }
+
+    // Add installment payments due this month
+    for (const expense of allInstallmentExpenses) {
+      const purchaseDate = new Date(expense.date);
+      const currentDate = new Date();
+      const monthsDiff = (currentDate.getFullYear() - purchaseDate.getFullYear()) * 12 +
+                        (currentDate.getMonth() - purchaseDate.getMonth());
+
+      const currentInstallment = Math.min(monthsDiff + 1, expense.installments);
+      if (currentInstallment > 0 && currentInstallment <= expense.installments) {
+        monthlySpent += parseFloat(expense.totalValue) / expense.installments;
+      }
+    }
+
+    const [totalResult, fixedResult, countResult, incomeResult, incomeCountResult, earningsResult] =
       await Promise.all([
         db
           .select({ total: sql<number>`COALESCE(SUM(total_value), 0)` })
           .from(expenses)
-          .where(eq(expenses.userId, userId)),
+          .where(expenseWhereClause),
         db
           .select({ total: sql<number>`COALESCE(SUM(total_value), 0)` })
           .from(expenses)
-          .where(
-            and(
-              eq(expenses.userId, userId),
-              gte(expenses.date, startDateStr),
-              lte(expenses.date, endDateStr)
-            )
-          ),
-        db
-          .select({ total: sql<number>`COALESCE(SUM(total_value), 0)` })
-          .from(expenses)
-          .where(and(eq(expenses.userId, userId), eq(expenses.isFixed, true))),
+          .where(and(expenseWhereClause, eq(expenses.isFixed, true))),
         db
           .select({ count: sql<number>`count(*)` })
           .from(expenses)
-          .where(eq(expenses.userId, userId)),
-        db
-          .select({
-            category: expenses.category,
-            total: sql<number>`SUM(total_value)`,
-          })
-          .from(expenses)
-          .where(eq(expenses.userId, userId))
-          .groupBy(expenses.category),
+          .where(expenseWhereClause),
         db
           .select({ total: sql<number>`COALESCE(SUM(amount), 0)` })
           .from(incomes)
@@ -313,14 +377,27 @@ export class DatabaseStorage implements IStorage {
           ),
       ]);
 
+    // Get all filtered expenses to calculate correct category breakdown considering installments
+    const allFilteredExpenses = await db
+      .select()
+      .from(expenses)
+      .where(expenseWhereClause);
+
     const categoryBreakdown: Record<string, number> = {};
-    for (const row of categoryResult) {
-      categoryBreakdown[row.category] = Number(row.total) || 0;
+    for (const expense of allFilteredExpenses) {
+      let expenseValue = parseFloat(expense.totalValue);
+
+      // For installment expenses, use the installment value instead of total
+      if (expense.installments && expense.installments > 1) {
+        expenseValue = expenseValue / expense.installments;
+      }
+
+      categoryBreakdown[expense.category] = (categoryBreakdown[expense.category] || 0) + expenseValue;
     }
 
     return {
       totalSpent: Number(totalResult[0]?.total) || 0,
-      monthlySpent: Number(monthlyResult[0]?.total) || 0,
+      monthlySpent: monthlySpent,
       fixedExpenses: Number(fixedResult[0]?.total) || 0,
       expenseCount: countResult[0]?.count || 0,
       categoryBreakdown,
@@ -371,8 +448,19 @@ export class DatabaseStorage implements IStorage {
     return result.rowCount > 0;
   }
 
-  async getEarnings(userId: number, options: { sortBy?: string } = {}): Promise<Earning[]> {
-    const { sortBy = "date_desc" } = options;
+  async getEarnings(userId: number, options: { sortBy?: string; startDate?: string; endDate?: string } = {}): Promise<Earning[]> {
+    const { sortBy = "date_desc", startDate, endDate } = options;
+
+    const conditions = [eq(earnings.userId, userId)];
+
+    if (startDate) {
+      conditions.push(gte(earnings.date, startDate));
+    }
+    if (endDate) {
+      conditions.push(lte(earnings.date, endDate));
+    }
+
+    const whereClause = and(...conditions);
 
     let orderByClause;
     switch (sortBy) {
@@ -394,7 +482,7 @@ export class DatabaseStorage implements IStorage {
     return await db
       .select()
       .from(earnings)
-      .where(eq(earnings.userId, userId))
+      .where(whereClause)
       .orderBy(orderByClause[0], orderByClause[1]);
   }
 

@@ -1,6 +1,9 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
+import { db } from "./db";
+import { eq } from "drizzle-orm";
+import jwt from "jsonwebtoken";
 import {
   hashPassword,
   comparePassword,
@@ -12,7 +15,8 @@ import {
   type AuthenticatedRequest,
 } from "./auth";
 import { sendResetPasswordEmail, sendSupportEmail, sendRegistrationNotification, sendPasswordChangeNotification } from './email';
-import { resetPasswordSchema, verifyResetCodeSchema, loginSchema, updateIncomeSchema, insertExpenseSchema, insertUserSchema, updateExpenseSchema, updateUserSchema, updatePasswordSchema, insertIncomeSchema, insertEarningSchema, updateEarningSchema } from '@shared/schema';
+import { processRecurringExpenses } from './recurring-expenses';
+import { resetPasswordSchema, verifyResetCodeSchema, loginSchema, updateIncomeSchema, insertExpenseSchema, insertUserSchema, updateExpenseSchema, updateUserSchema, updatePasswordSchema, insertIncomeSchema, insertEarningSchema, updateEarningSchema, users } from '@shared/schema';
 
 const resetCodes = new Map<string, { code: string; expires: Date }>();
 
@@ -386,7 +390,16 @@ export async function registerRoutes(
 
   app.get("/api/expenses/stats", authMiddleware, async (req: AuthenticatedRequest, res) => {
     try {
-      const stats = await storage.getExpenseStats(Number(req.user!.id));
+      const { search, category, startDate, endDate, fixed, paid } = req.query;
+
+      const stats = await storage.getExpenseStats(Number(req.user!.id), {
+        search: search as string,
+        category: category as string,
+        startDate: startDate as string,
+        endDate: endDate as string,
+        fixed: fixed === 'true' ? true : fixed === 'false' ? false : undefined,
+        paid: paid === 'true' ? true : paid === 'false' ? false : undefined,
+      });
       res.json(stats);
     } catch (error) {
       console.error("Get stats error:", error);
@@ -686,14 +699,18 @@ export async function registerRoutes(
 
   app.get("/api/earnings", authMiddleware, async (req: AuthenticatedRequest, res) => {
     try {
-      const { sortBy } = req.query;
-      const earnings = await storage.getEarnings(Number(req.user!.id), { sortBy: sortBy as string });
+      const { sortBy, startDate, endDate } = req.query;
+      const earnings = await storage.getEarnings(Number(req.user!.id), { 
+        sortBy: sortBy as string,
+        startDate: startDate as string,
+        endDate: endDate as string
+      });
 
       // Transform dates to ensure they're in YYYY-MM-DD format
       const transformedEarnings = earnings.map(earning => ({
         ...earning,
-        date: earning.date instanceof Date
-          ? earning.date.toISOString().split('T')[0]
+        date: (earning.date as any) instanceof Date
+          ? (earning.date as any).toISOString().split('T')[0]
           : typeof earning.date === 'string' && earning.date.includes('T')
           ? earning.date.split('T')[0]
           : earning.date
@@ -719,6 +736,7 @@ export async function registerRoutes(
       const earningData = {
         ...parsed.data,
         userId: Number(req.user!.id),
+        client: parsed.data.client ?? null,
       };
 
       const earning = await storage.createEarning(earningData);
@@ -726,8 +744,8 @@ export async function registerRoutes(
       // Transform date to ensure it's in YYYY-MM-DD format
       const transformedEarning = {
         ...earning,
-        date: earning.date instanceof Date
-          ? earning.date.toISOString().split('T')[0]
+        date: (earning.date as any) instanceof Date
+          ? (earning.date as any).toISOString().split('T')[0]
           : typeof earning.date === 'string' && earning.date.includes('T')
           ? earning.date.split('T')[0]
           : earning.date
@@ -760,8 +778,8 @@ export async function registerRoutes(
       // Transform date to ensure it's in YYYY-MM-DD format
       const transformedEarning = {
         ...earning,
-        date: earning.date instanceof Date
-          ? earning.date.toISOString().split('T')[0]
+        date: (earning.date as any) instanceof Date
+          ? (earning.date as any).toISOString().split('T')[0]
           : typeof earning.date === 'string' && earning.date.includes('T')
           ? earning.date.split('T')[0]
           : earning.date
@@ -884,6 +902,17 @@ Enviado em: ${new Date().toLocaleString('pt-BR')}
     } catch (error) {
       console.error("Support contact error:", error);
       res.status(500).json({ message: "Erro interno do servidor" });
+    }
+  });
+
+  // Recurring expenses processing - can be called by cron job daily
+  app.post("/api/admin/process-recurring-expenses", async (req, res) => {
+    try {
+      await processRecurringExpenses();
+      res.json({ message: "Recurring expenses processed successfully" });
+    } catch (error) {
+      console.error("Error processing recurring expenses:", error);
+      res.status(500).json({ message: "Error processing recurring expenses" });
     }
   });
 

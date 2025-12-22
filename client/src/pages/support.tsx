@@ -275,21 +275,27 @@ export default function SupportPage() {
               </Link>
             </div>
 
-            <div className="mt-6 flex flex-col sm:flex-row items-center justify-center gap-2 text-center">
-              <div className="flex items-center gap-2">
-                <Copyright className="h-3 w-3" />
-                <span className="text-xs sm:text-sm">
-                  Desenvolvido por Rodrigo Pires Figueiredo | 2025
-                </span>
+            <div className="mt-6 flex flex-col items-center gap-4 text-sm text-muted-foreground">
+              <div className="flex items-center gap-6">
+                <div className="flex items-center gap-2">
+                  <Copyright className="h-3 w-3" />
+                  <span>Rodrigo Pires Figueiredo | 2025</span>
+                </div>
+                <span>|</span>
+                <a
+                  href="https://instagram.com/_pires.r"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1 hover:text-foreground transition-colors"
+                >
+                  <Instagram className="h-4 w-4" />
+                  <span>@_pires.r</span>
+                </a>
               </div>
-              <a
-                href="https://instagram.com/_pires.r"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center hover:text-primary"
-              >
-                <Instagram className="h-3 w-3" />
-              </a>
+              <p className="text-xs opacity-70 max-w-md text-center">
+                AppFinance - Sua ferramenta completa para gestão financeira pessoal.
+                Mantenha o controle das suas finanças com facilidade e segurança.
+              </p>
             </div>
           </div>
         </div>

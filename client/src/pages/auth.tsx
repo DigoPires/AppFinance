@@ -127,13 +127,31 @@ export default function AuthPage() {
 
   return (
     <div className="flex min-h-screen">
-      <div className="hidden w-1/2 bg-primary lg:flex items-center justify-center">
-        <div className="text-center text-primary-foreground max-w-md">
-          <Receipt className="mx-auto mb-6 h-10 w-10" />
-          <h1 className="mb-3 text-4xl font-bold">AppFinance</h1>
-          <p className="opacity-90">
+      {/* Coluna esquerda (desktop) */}
+      <div className="hidden w-1/2 bg-primary lg:flex lg:flex-col lg:items-center lg:justify-center lg:p-12">
+        <div className="flex flex-col items-center text-center text-primary-foreground">
+          <div className="mb-8 flex h-20 w-20 items-center justify-center rounded-2xl bg-white/20 backdrop-blur-sm">
+            <Receipt className="h-10 w-10" />
+          </div>
+          <h1 className="mb-4 text-4xl font-bold">AppFinance</h1>
+          <p className="max-w-md text-lg opacity-90">
             Controle suas finanças de forma simples e eficiente.
+            Acompanhe suas finanças pessoais em tempo real.
           </p>
+          <div className="mt-12 grid grid-cols-3 gap-8 text-center">
+            <div>
+              <div className="text-3xl font-bold">100%</div>
+              <div className="text-sm opacity-80">Portável</div>
+            </div>
+            <div>
+              <div className="text-3xl font-bold">24/7</div>
+              <div className="text-sm opacity-80">Disponível</div>
+            </div>
+            <div>
+              <div className="text-3xl font-bold">Seguro</div>
+              <div className="text-sm opacity-80">JWT Auth</div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -354,19 +372,43 @@ export default function AuthPage() {
                   {isLogin ? "Criar conta" : "Entrar"}
                 </button>
               </div>
+
+              <div className="mt-4 text-center">
+                <Link
+                  href="/support"
+                  className="text-sm text-muted-foreground hover:text-foreground"
+                >
+                  Precisa de ajuda? Contate o suporte
+                </Link>
+              </div>
             </CardContent>
           </Card>
 
-          <div className="mt-6 flex items-center gap-2 text-sm text-muted-foreground">
-            <Copyright className="h-3 w-3" />
-            <span>Rodrigo Pires Figueiredo | 2025</span>
-            <a
-              href="https://instagram.com/_pires.r"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <Instagram className="h-4 w-4" />
-            </a>
+          <div className="mt-6 flex flex-col items-center gap-4 text-sm text-muted-foreground">
+            <div className="flex items-center gap-6">
+              <Link href="/support" className="flex items-center gap-1 hover:text-foreground transition-colors">
+                <span>Ajuda & Suporte</span>
+              </Link>
+              <span>|</span>
+              <div className="flex items-center gap-2">
+                <Copyright className="h-3 w-3" />
+                <span>Rodrigo Pires Figueiredo | 2025</span>
+              </div>
+              <span>|</span>
+              <a
+                href="https://instagram.com/_pires.r"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1 hover:text-foreground transition-colors"
+              >
+                <Instagram className="h-4 w-4" />
+                <span>@_pires.r</span>
+              </a>
+            </div>
+            <p className="text-xs opacity-70 max-w-md text-center">
+              AppFinance - Sua ferramenta completa para gestão financeira pessoal.
+              Mantenha o controle das suas finanças com facilidade e segurança.
+            </p>
           </div>
         </div>
       </div>

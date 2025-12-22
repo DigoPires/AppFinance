@@ -69,7 +69,7 @@ import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import type { ExpenseWithInstallments, Income } from "@shared/schema";
+import type { ExpenseWithInstallments, Income, Expense } from "@shared/schema";
 
 interface ExpenseStats {
   totalSpent: number;
@@ -96,6 +96,7 @@ const categoryIcons: Record<string, React.ElementType> = {
   "Lazer": Gamepad2,
   "Vestuário": Shirt,
   "Serviços": Wrench,
+  "Pet": Heart,
   "Outros": MoreHorizontal,
 };
 function StatCard({
@@ -250,6 +251,41 @@ export default function Dashboard() {
       .replace(/[\u0300-\u036f]/g, '');
   };
 
+  // Convert dateFilter to startDate/endDate for API
+  const getDateParams = () => {
+    if (filters.dateFilter.mode === 'all') {
+      return {};
+    } else if (filters.dateFilter.mode === 'year' && filters.dateFilter.years.length > 0) {
+      const years = filters.dateFilter.years.map(y => parseInt(y)).sort();
+      const startYear = Math.min(...years);
+      const endYear = Math.max(...years);
+      return {
+        startDate: `${startYear}-01-01`,
+        endDate: `${endYear}-12-31`
+      };
+    } else if (filters.dateFilter.mode === 'month' && filters.dateFilter.years.length > 0 && filters.dateFilter.months.length > 0) {
+      const years = filters.dateFilter.years.map(y => parseInt(y)).sort();
+      const months = filters.dateFilter.months.map(m => parseInt(m)).sort();
+      const startYear = Math.min(...years);
+      const endYear = Math.max(...years);
+      const startMonth = Math.min(...months);
+      const endMonth = Math.max(...months);
+
+      const lastDayOfEndMonth = new Date(endYear, endMonth, 0).getDate();
+
+      return {
+        startDate: `${startYear}-${startMonth.toString().padStart(2, '0')}-01`,
+        endDate: `${endYear}-${endMonth.toString().padStart(2, '0')}-${lastDayOfEndMonth.toString().padStart(2, '0')}`
+      };
+    } else if (filters.dateFilter.mode === 'range') {
+      const params: any = {};
+      if (filters.dateFilter.from) params.startDate = filters.dateFilter.from;
+      if (filters.dateFilter.to) params.endDate = filters.dateFilter.to;
+      return params;
+    }
+    return {};
+  };
+
   const [isEditing, setIsEditing] = useState(false);
   const [tempValue, setTempValue] = useState('');
   const [filtersOpen, setFiltersOpen] = useState(false);
@@ -260,7 +296,7 @@ export default function Dashboard() {
     paymentMethod: [] as string[],
     account: [] as string[],
     location: [] as string[],
-    isFixed: undefined,
+    isFixed: undefined as boolean | undefined,
     notes: '',
     dateFilter: {
       mode: 'all' as 'all' | 'year' | 'month' | 'range',
@@ -274,10 +310,42 @@ export default function Dashboard() {
   });
 
   const { data: stats, isLoading: statsLoading } = useQuery<ExpenseStats>({
-    queryKey: ["expenses-stats", { userId: user?.id }],
+    queryKey: ["expenses-stats", {
+      userId: user?.id,
+      search: filters.description,
+      category: filters.category.length > 0 ? filters.category.join(',') : undefined,
+      fixed: filters.isFixed,
+      dateFilter: filters.dateFilter
+    }],
     queryFn: async () => {
       const token = await getAccessToken();
-      const response = await fetch("/api/expenses/stats", {
+      const params = new URLSearchParams();
+
+      // Add search filter
+      if (filters.description) {
+        params.append('search', filters.description);
+      }
+
+      // Add category filter
+      if (filters.category.length > 0) {
+        params.append('category', filters.category.join(','));
+      }
+
+      // Add fixed filter
+      if (filters.isFixed !== undefined) {
+        params.append('fixed', filters.isFixed.toString());
+      }
+
+      // Add date filters
+      const dateParams = getDateParams();
+      if (dateParams.startDate) {
+        params.append('startDate', dateParams.startDate);
+      }
+      if (dateParams.endDate) {
+        params.append('endDate', dateParams.endDate);
+      }
+
+      const response = await fetch(`/api/expenses/stats?${params.toString()}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!response.ok) throw new Error("Failed to fetch stats");
@@ -286,7 +354,7 @@ export default function Dashboard() {
     enabled: !!user,
   });
 
-  const { data: allExpenses, isLoading: allExpensesLoading } = useQuery<Expense[]>({
+  const { data: allExpenses, isLoading: allExpensesLoading } = useQuery<ExpenseWithInstallments[]>({
     queryKey: ["expenses", { userId: user?.id, type: "dashboard" }],
     queryFn: async () => {
       const token = await getAccessToken();
@@ -300,7 +368,7 @@ export default function Dashboard() {
     enabled: !!user,
   });
 
-  const { data: recentExpenses, isLoading: recentLoading } = useQuery<Expense[]>({
+  const { data: recentExpenses, isLoading: recentLoading } = useQuery<ExpenseWithInstallments[]>({
     queryKey: ["expenses", { userId: user?.id, type: "recent" }],
     queryFn: async () => {
       const token = await getAccessToken();
@@ -314,7 +382,7 @@ export default function Dashboard() {
     enabled: !!user,
   });
 
-  const { data: pendingFixedExpenses, isLoading: pendingLoading } = useQuery<Expense[]>({
+  const { data: pendingFixedExpenses, isLoading: pendingLoading } = useQuery<ExpenseWithInstallments[]>({
     queryKey: ["expenses", { userId: user?.id, type: "pending-fixed" }],
     queryFn: async () => {
       const token = await getAccessToken();
@@ -409,12 +477,15 @@ export default function Dashboard() {
     setTempValue('');
   };
 
-  const filteredExpenses = allExpenses?.filter(expense => {
-    const [expYear, expMonth, expDay] = expense.date.split('-').map(Number);
+
+  const filteredRecentExpenses = recentExpenses?.filter(expense => {
+    // Para despesas fixas pagas, usar a data de pagamento
+    const dateToUse = expense.isFixed && expense.isPaid && expense.paymentDate ? expense.paymentDate : expense.date;
+    const [expYear, expMonth, expDay] = dateToUse.split('-').map(Number);
     let dateMatch = true;
 
-    if (filters.dateFilter.mode === 'year' && filters.dateFilter.years.length > 0) {
-      dateMatch = filters.dateFilter.years.includes(expYear.toString());
+    if (filters.dateFilter.mode === 'year' && filters.dateFilter.year) {
+      dateMatch = expYear.toString() === filters.dateFilter.year;
     } else if (filters.dateFilter.mode === 'month' && filters.dateFilter.years.length > 0 && filters.dateFilter.months.length > 0) {
       dateMatch = filters.dateFilter.years.includes(expYear.toString()) &&
         filters.dateFilter.months.includes(expMonth.toString());
@@ -433,38 +504,8 @@ export default function Dashboard() {
       (filters.location.length === 0 || (expense.location && filters.location.includes(expense.location))) &&
       (filters.isFixed === undefined || expense.isFixed === filters.isFixed) &&
       (!filters.notes || (expense.notes && normalizeText(expense.notes).includes(normalizeText(filters.notes)))) &&
-      dateMatch
-    );
-  }) || [];
-
-  const filteredRecentExpenses = recentExpenses?.filter(expense => {
-    // Para despesas fixas pagas, usar a data de pagamento
-    const dateToUse = expense.isFixed && expense.isPaid && expense.paymentDate ? expense.paymentDate : expense.date;
-    const [expYear, expMonth, expDay] = dateToUse.split('-').map(Number);
-    let dateMatch = true;
-
-    if (filters.dateFilter.mode === 'year' && filters.dateFilter.year) {
-      dateMatch = expYear.toString() === filters.dateFilter.year;
-    } else if (filters.dateFilter.mode === 'month' && filters.dateFilter.year && filters.dateFilter.month) {
-      dateMatch = expYear.toString() === filters.dateFilter.year &&
-        expMonth.toString() === filters.dateFilter.month;
-    } else if (filters.dateFilter.mode === 'range') {
-      const fromDate = filters.dateFilter.from ? new Date(filters.dateFilter.from + 'T00:00:00') : null;
-      const toDate = filters.dateFilter.to ? new Date(filters.dateFilter.to + 'T23:59:59.999') : null;
-      const expenseDate = new Date(expYear, expMonth - 1, expDay);
-      dateMatch = (!fromDate || expenseDate >= fromDate) && (!toDate || expenseDate <= toDate);
-    }
-
-    return (
-      (filters.category.length === 0 || filters.category.includes(expense.category)) &&
-      (!filters.description || normalizeText(expense.description).includes(normalizeText(filters.description))) &&
-      (filters.paymentMethod.length === 0 || filters.paymentMethod.includes(expense.paymentMethod)) &&
-      (filters.account.length === 0 || (expense.account && filters.account.includes(expense.account))) &&
-      (filters.location.length === 0 || (expense.location && filters.location.includes(expense.location))) &&
-      (filters.isFixed === undefined || expense.isFixed === filters.isFixed) &&
-      (!filters.notes || (expense.notes && normalizeText(expense.notes).includes(normalizeText(filters.notes)))) &&
       dateMatch &&
-      // Incluir apenas despesas não fixas OU despesas fixas pagas
+      // Despesas fixas pendentes seguem as mesmas regras de filtro que as outras despesas
       (!expense.isFixed || expense.isPaid)
     );
   }) || [];
@@ -480,58 +521,16 @@ export default function Dashboard() {
       .sort((a, b) => b - a) // Ordenar do mais recente para o mais antigo
     : [];
 
-  const filteredStats = filteredExpenses ? {
-    totalSpent: filteredExpenses.reduce((sum, exp) => {
-      // Para despesas parceladas, usar o valor da parcela atual
-      const value = exp.installments && exp.installments > 1
-        ? (exp.currentInstallmentValue || 0)
-        : parseFloat(exp.totalValue.toString());
-      return sum + value;
-    }, 0),
-    monthlySpent: filteredExpenses
-      .filter(exp => {
-        const [expYear, expMonth] = exp.date.split('-').map(Number);
-        const now = new Date();
-        return expMonth - 1 === now.getMonth() && expYear === now.getFullYear();
-      })
-      .reduce((sum, exp) => {
-        // Para despesas parceladas, usar o valor da parcela atual
-        const value = exp.installments && exp.installments > 1
-          ? (exp.currentInstallmentValue || 0)
-          : parseFloat(exp.totalValue.toString());
-        return sum + value;
-      }, 0),
-    fixedExpenses: filteredExpenses.filter(exp => exp.isFixed).reduce((sum, exp) => {
-      // Para despesas fixas parceladas, usar o valor da parcela atual
-      const value = exp.installments && exp.installments > 1
-        ? (exp.currentInstallmentValue || 0)
-        : parseFloat(exp.totalValue.toString());
-      return sum + value;
-    }, 0),
-    expenseCount: filteredExpenses.length,
-    categoryBreakdown: filteredExpenses.reduce((acc, exp) => {
-      // Para despesas parceladas, usar o valor da parcela atual
-      const value = exp.installments && exp.installments > 1
-        ? (exp.currentInstallmentValue || 0)
-        : parseFloat(exp.totalValue.toString());
-      acc[exp.category] = (acc[exp.category] || 0) + value;
-      return acc;
-    }, {} as Record<string, number>),
-    monthlyIncome: stats?.monthlyIncome || 0,
-    incomeCount: stats?.incomeCount || 0,
-  } : stats;
-
   const currentMonth = format(new Date(), "MMMM 'de' yyyy", { locale: ptBR });
   const monthStart = format(startOfMonth(new Date()), "dd/MM");
   const monthEnd = format(endOfMonth(new Date()), "dd/MM");
 
-  const categoryEntries = filteredStats?.categoryBreakdown
-    ? Object.entries(filteredStats.categoryBreakdown).sort((a, b) => {
-      // "Outros" sempre no final
-      if (a[0] === 'Outros') return 1;
-      if (b[0] === 'Outros') return -1;
-      // Outras categorias ordenadas por valor decrescente
-      return b[1] - a[1];
+  const categoryEntries: [string, number][] = stats?.categoryBreakdown
+    ? Object.entries(stats.categoryBreakdown).sort((a, b) => {
+      // Todas as categorias ordenadas por valor decrescente
+      const valueA = typeof a[1] === 'number' ? a[1] : 0;
+      const valueB = typeof b[1] === 'number' ? b[1] : 0;
+      return valueB - valueA;
     })
     : [];
 
@@ -568,7 +567,7 @@ export default function Dashboard() {
             <span className="text-sm text-muted-foreground">BRL</span>
           </div>
         ) : (stats?.monthlyIncome || 0) > 0 ? (
-          <div className="flex flex-col items-end">
+          <div className="flex flex-col items-end gap-2">
             <span className="text-xs text-muted-foreground">Renda Total (Mês Atual)</span>
             <div className="flex items-center gap-2">
               <span className="text-lg font-semibold font-mono">
@@ -580,14 +579,36 @@ export default function Dashboard() {
                 </Button>
               </Link>
             </div>
+            <div className="flex gap-2">
+              <Link href="/expenses">
+                <Button variant="outline" size="sm" data-testid="button-add-expense">
+                  <Plus className="mr-2 h-4 w-4" />
+                  Adicionar Despesa
+                </Button>
+              </Link>
+              <Link href="/earnings">
+                <Button size="sm" data-testid="button-add-income">
+                  <Plus className="mr-2 h-4 w-4" />
+                  Adicionar Renda
+                </Button>
+              </Link>
+            </div>
           </div>
         ) : (
-          <Link href="/earnings">
-            <Button className="sm:w-auto" data-testid="button-add-income">
-              <Plus className="mr-2 h-4 w-4" />
-              Adicionar Renda
-            </Button>
-          </Link>
+          <div className="flex gap-2">
+            <Link href="/expenses">
+              <Button variant="outline" className="sm:w-auto" data-testid="button-add-expense">
+                <Plus className="mr-2 h-4 w-4" />
+                Adicionar Despesa
+              </Button>
+            </Link>
+            <Link href="/earnings">
+              <Button className="sm:w-auto" data-testid="button-add-income">
+                <Plus className="mr-2 h-4 w-4" />
+                Adicionar Renda
+              </Button>
+            </Link>
+          </div>
         )}
       </div>
 
@@ -610,8 +631,14 @@ export default function Dashboard() {
                         <Calendar className="mr-2 h-4 w-4" />
                         {filters.dateFilter.mode === 'all' && 'Todos os períodos'}
                         {filters.dateFilter.mode === 'year' && filters.dateFilter.year && `${filters.dateFilter.year}`}
-                        {filters.dateFilter.mode === 'month' && filters.dateFilter.year && filters.dateFilter.month &&
-                          `${filters.dateFilter.month.padStart(2, '0')}/${filters.dateFilter.year}`}
+                        {filters.dateFilter.mode === 'month' && filters.dateFilter.years.length > 0 && filters.dateFilter.months.length > 0 &&
+                          (() => {
+                            const monthLabels = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+                            const selectedMonths = filters.dateFilter.months.map(m => monthLabels[parseInt(m) - 1]).join('/');
+                            const selectedYears = filters.dateFilter.years.join('/');
+                            return `${selectedMonths}/${selectedYears}`;
+                          })()
+                        }
                         {filters.dateFilter.mode === 'range' && filters.dateFilter.from && filters.dateFilter.to &&
                           `${new Date(filters.dateFilter.from).toLocaleDateString('pt-BR')} - ${new Date(filters.dateFilter.to).toLocaleDateString('pt-BR')}`}
                         {filters.dateFilter.mode === 'range' && filters.dateFilter.from && !filters.dateFilter.to &&
@@ -1192,6 +1219,8 @@ export default function Dashboard() {
                     notes: '',
                     dateFilter: {
                       mode: 'all',
+                      years: [],
+                      months: [],
                       year: '',
                       month: '',
                       from: '',
@@ -1210,21 +1239,21 @@ export default function Dashboard() {
       <div className="grid gap-3 sm:gap-4 grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         <StatCard
           title="Total de Despesas"
-          value={formatCurrency(filteredStats?.totalSpent || 0)}
+          value={formatCurrency(stats?.totalSpent || 0)}
           icon={TrendingDown}
           description="Todas as despesas registradas"
           loading={allExpensesLoading || statsLoading}
         />
         <StatCard
           title="Este Mês"
-          value={formatCurrency(filteredStats?.monthlySpent || 0)}
+          value={formatCurrency(stats?.monthlySpent || 0)}
           icon={Calendar}
           description={`${monthStart} - ${monthEnd}`}
           loading={allExpensesLoading || statsLoading}
         />
         <StatCard
           title="Transações"
-          value={String(filteredStats?.expenseCount || 0)}
+          value={String(stats?.expenseCount || 0)}
           icon={PiggyBank}
           description="Total de registros"
           loading={allExpensesLoading || statsLoading}
@@ -1232,7 +1261,7 @@ export default function Dashboard() {
         {(stats?.monthlyIncome || 0) > 0 ? (
           <StatCard
             title="Saldo Restante"
-            value={formatCurrency((stats?.monthlyIncome || 0) - (filteredStats?.monthlySpent || 0))}
+            value={formatCurrency((stats?.monthlyIncome || 0) - (stats?.monthlySpent || 0))}
             icon={Wallet}
             description="Renda mensal - despesas do mês"
             loading={allExpensesLoading || statsLoading}
@@ -1264,7 +1293,7 @@ export default function Dashboard() {
                   key={category}
                   category={category}
                   amount={amount}
-                  total={filteredStats?.totalSpent || 0}
+                  total={stats?.totalSpent || 0}
                 />
               ))
             ) : (

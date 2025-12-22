@@ -229,6 +229,7 @@ export const CATEGORIES = [
   "Lazer",
   "Vestuário",
   "Serviços",
+  "Pet",
   "Outros",
 ] as const;
 

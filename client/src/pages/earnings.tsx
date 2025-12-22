@@ -195,25 +195,69 @@ export default function Earnings() {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
-  // Date filter state
   const [dateFilter, setDateFilter] = useState({
     mode: 'all' as 'all' | 'year' | 'month' | 'range',
     years: [] as string[],
     months: [] as string[],
+    year: '',
+    month: '',
     from: '',
     to: '',
   });
+
+  // Convert dateFilter to startDate/endDate for API
+  const getDateParams = () => {
+    if (dateFilter.mode === 'all') {
+      return {};
+    } else if (dateFilter.mode === 'year' && dateFilter.years.length > 0) {
+      const years = dateFilter.years.map(y => parseInt(y)).sort();
+      const startYear = Math.min(...years);
+      const endYear = Math.max(...years);
+      return {
+        startDate: `${startYear}-01-01`,
+        endDate: `${endYear}-12-31`
+      };
+    } else if (dateFilter.mode === 'month' && dateFilter.years.length > 0 && dateFilter.months.length > 0) {
+      const years = dateFilter.years.map(y => parseInt(y)).sort();
+      const months = dateFilter.months.map(m => parseInt(m)).sort();
+      const startYear = Math.min(...years);
+      const endYear = Math.max(...years);
+      const startMonth = Math.min(...months);
+      const endMonth = Math.max(...months);
+
+      const lastDayOfEndMonth = new Date(endYear, endMonth, 0).getDate();
+
+      return {
+        startDate: `${startYear}-${startMonth.toString().padStart(2, '0')}-01`,
+        endDate: `${endYear}-${endMonth.toString().padStart(2, '0')}-${lastDayOfEndMonth.toString().padStart(2, '0')}`
+      };
+    } else if (dateFilter.mode === 'range') {
+      const params: any = {};
+      if (dateFilter.from) params.startDate = dateFilter.from;
+      if (dateFilter.to) params.endDate = dateFilter.to;
+      return params;
+    }
+    return {};
+  };
+
+  const dateParams = getDateParams();
 
   // Income management
   const [isEditingIncome, setIsEditingIncome] = useState(false);
   const [tempIncomeValue, setTempIncomeValue] = useState("");
 
   const { data: earnings, isLoading } = useQuery<Earning[]>({
-    queryKey: ["earnings", { sortBy }],
+    queryKey: ["earnings", { sortBy, dateFilter }],
     queryFn: async () => {
       const token = await getAccessToken();
       const params = new URLSearchParams();
       if (sortBy) params.set("sortBy", sortBy);
+      
+      // Add date parameters
+      const dateParams = getDateParams();
+      if (dateParams.startDate) params.set("startDate", dateParams.startDate);
+      if (dateParams.endDate) params.set("endDate", dateParams.endDate);
+      
       const response = await fetch(`/api/earnings?${params}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -271,34 +315,7 @@ export default function Earnings() {
     const matchesSearch = earning.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
       earning.client?.toLowerCase().includes(searchTerm.toLowerCase());
 
-    if (!matchesSearch) return false;
-
-    // Date filtering
-    if (dateFilter.mode === 'all') return true;
-
-    const [earningYear, earningMonth] = earning.date.split('-').map(Number);
-    let dateMatch = true;
-
-    if (dateFilter.mode === 'year' && dateFilter.years.length > 0) {
-      dateMatch = dateFilter.years.includes(earningYear.toString());
-    } else if (dateFilter.mode === 'month' && dateFilter.years.length > 0 && dateFilter.months.length > 0) {
-      dateMatch = dateFilter.years.includes(earningYear.toString()) &&
-                  dateFilter.months.includes(earningMonth.toString());
-    } else if (dateFilter.mode === 'range') {
-      const fromDate = dateFilter.from ? new Date(dateFilter.from + 'T00:00:00') : null;
-      const toDate = dateFilter.to ? new Date(dateFilter.to + 'T23:59:59') : null;
-      const earningDate = new Date(earning.date + 'T12:00:00');
-
-      if (fromDate && toDate) {
-        dateMatch = earningDate >= fromDate && earningDate <= toDate;
-      } else if (fromDate) {
-        dateMatch = earningDate >= fromDate;
-      } else if (toDate) {
-        dateMatch = earningDate <= toDate;
-      }
-    }
-
-    return dateMatch;
+    return matchesSearch;
   }) || [];
 
   const totalPages = Math.ceil(filteredEarnings.length / itemsPerPage);

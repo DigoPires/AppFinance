@@ -209,7 +209,7 @@ export function ExpenseForm({ expense, initialData, onSuccess, onCancel }: Expen
         },
         body: JSON.stringify({
           ...data,
-          date: `${data.date.getFullYear()}-${String(data.date.getMonth() + 1).padStart(2, '0')}-${String(data.date.getDate()).padStart(2, '0')}`,
+          date: `${(data.date || new Date()).getFullYear()}-${String((data.date || new Date()).getMonth() + 1).padStart(2, '0')}-${String((data.date || new Date()).getDate()).padStart(2, '0')}`,
           paymentDate: data.paymentDate ? `${data.paymentDate.getFullYear()}-${String(data.paymentDate.getMonth() + 1).padStart(2, '0')}-${String(data.paymentDate.getDate()).padStart(2, '0')}T12:00:00` : undefined,
           unitValue: String(data.unitValue).replace(",", "."),
         }),
@@ -448,6 +448,22 @@ export function ExpenseForm({ expense, initialData, onSuccess, onCancel }: Expen
           </FormItem>
         </div>
 
+        <FormField
+          control={form.control}
+          name="isFixed"
+          render={({ field }) => (
+            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 sm:p-4">
+              <FormControl>
+                <Switch
+                  checked={field.value}
+                  onCheckedChange={(checked) => field.onChange(Boolean(checked))}
+                  data-testid="switch-is-fixed"
+                />
+              </FormControl>
+            </FormItem>
+          )}
+        />
+
         <div className="grid gap-4 sm:grid-cols-2">
           <FormField
             control={form.control}
@@ -539,23 +555,22 @@ export function ExpenseForm({ expense, initialData, onSuccess, onCancel }: Expen
           control={form.control}
           name="isPaid"
           render={({ field }) => (
-            isFixed ? (
-              <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 sm:p-4">
-                <div className="space-y-0.5">
-                  <FormLabel className="text-sm sm:text-base">Pago</FormLabel>
-                  <p className="text-xs sm:text-sm text-muted-foreground">
-                    Marque se esta despesa já foi paga
-                  </p>
-                </div>
-                <FormControl>
-                  <Switch
-                    checked={field.value}
-                    onCheckedChange={(checked) => field.onChange(Boolean(checked))}
-                    data-testid="switch-is-paid"
-                  />
-                </FormControl>
-              </FormItem>
-            ) : null
+            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 sm:p-4">
+              <div className="space-y-0.5">
+                <FormLabel className="text-sm sm:text-base">Pago</FormLabel>
+                <p className="text-xs sm:text-sm text-muted-foreground">
+                  Marque se esta despesa já foi paga
+                </p>
+              </div>
+              <FormControl>
+                <Switch
+                  checked={field.value}
+                  onCheckedChange={(checked) => field.onChange(Boolean(checked))}
+                  data-testid="switch-is-paid"
+                  disabled={!isFixed}
+                />
+              </FormControl>
+            </FormItem>
           )}
         />
 
