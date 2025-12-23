@@ -51,9 +51,9 @@ const formSchema = z.object({
   unitValue: z.string().refine(
     (val) => {
       const num = parseFloat(val.replace(",", "."));
-      return !isNaN(num) && num > 0 && num <= 1000000000;
+      return !isNaN(num) && num > 0 && num <= 10000000; // 10 milhões
     },
-    "Valor deve ser maior que zero e no máximo 1 bilhão"
+    "Valor deve ser maior que zero e no máximo 10 milhões"
   ),
   quantity: z.number().int().min(1, "Quantidade deve ser pelo menos 1"),
   paymentMethod: z.string().min(1, "Forma de pagamento é obrigatória"),
@@ -131,6 +131,14 @@ export function ExpenseForm({ expense, initialData, onSuccess, onCancel }: Expen
       form.setValue("paymentDate", new Date());
     }
   }, [isPaid, form]);
+
+  // Quando desabilitar despesa fixa, resetar campos relacionados ao pagamento
+  useEffect(() => {
+    if (!isFixed) {
+      form.setValue("isPaid", false);
+      form.setValue("paymentDate", undefined);
+    }
+  }, [isFixed, form]);
 
   const totalValue =
     parseFloat(String(unitValue).replace(",", ".") || "0") * (quantity || 1);
@@ -248,6 +256,7 @@ export function ExpenseForm({ expense, initialData, onSuccess, onCancel }: Expen
 
   const isPending = createMutation.isPending || updateMutation.isPending;
 
+
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
@@ -319,6 +328,7 @@ export function ExpenseForm({ expense, initialData, onSuccess, onCancel }: Expen
               )}
             />
           )}
+          
           <FormField
             control={form.control}
             name="category"
@@ -448,22 +458,6 @@ export function ExpenseForm({ expense, initialData, onSuccess, onCancel }: Expen
           </FormItem>
         </div>
 
-        <FormField
-          control={form.control}
-          name="isFixed"
-          render={({ field }) => (
-            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 sm:p-4">
-              <FormControl>
-                <Switch
-                  checked={field.value}
-                  onCheckedChange={(checked) => field.onChange(Boolean(checked))}
-                  data-testid="switch-is-fixed"
-                />
-              </FormControl>
-            </FormItem>
-          )}
-        />
-
         <div className="grid gap-4 sm:grid-cols-2">
           <FormField
             control={form.control}
@@ -551,12 +545,13 @@ export function ExpenseForm({ expense, initialData, onSuccess, onCancel }: Expen
           )}
         />
 
-        <FormField
-          control={form.control}
-          name="isPaid"
-          render={({ field }) => (
-            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 sm:p-4">
-              <div className="space-y-0.5">
+        {isFixed && (
+          <FormField
+            control={form.control}
+            name="isPaid"
+            render={({ field }) => (
+              <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 sm:p-4">
+                <div className="space-y-0.5">
                 <FormLabel className="text-sm sm:text-base">Pago</FormLabel>
                 <p className="text-xs sm:text-sm text-muted-foreground">
                   Marque se esta despesa já foi paga
@@ -573,6 +568,7 @@ export function ExpenseForm({ expense, initialData, onSuccess, onCancel }: Expen
             </FormItem>
           )}
         />
+        )}
 
         {isPaid && (
           <>

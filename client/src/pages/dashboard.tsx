@@ -419,11 +419,11 @@ export default function Dashboard() {
       });
       return;
     }
-    if (value > 1000000000) {
+    if (value > 10000000) { // 10 milhões
       toast({
         variant: "destructive",
         title: "Valor muito alto",
-        description: "O valor não pode ser maior que 1 bilhão.",
+        description: "O valor não pode ser maior que 10 milhões.",
       });
       return;
     }

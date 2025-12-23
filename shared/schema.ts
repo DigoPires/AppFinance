@@ -139,8 +139,8 @@ export const insertExpenseSchema = createInsertSchema(expenses).omit({
   description: z.string().min(1, "Descrição é obrigatória"),
   unitValue: z.string().refine(val => {
     const num = parseFloat(val);
-    return !isNaN(num) && num > 0 && num <= 1000000000;
-  }, "Valor deve ser maior que zero e no máximo 1 bilhão"),
+    return !isNaN(num) && num > 0 && num <= 10000000; // 10 milhões
+  }, "Valor deve ser maior que zero e no máximo 10 milhões"),
   quantity: z.number().int().min(1, "Quantidade deve ser pelo menos 1"),
   paymentMethod: z.string().min(1, "Forma de pagamento é obrigatória"),
   account: z.string().optional().nullable(),
@@ -164,8 +164,8 @@ export const insertIncomeSchema = createInsertSchema(incomes).omit({
   description: z.string().min(1, "Descrição é obrigatória"),
   amount: z.string().refine(val => {
     const num = parseFloat(val.replace(",", "."));
-    return !isNaN(num) && num > 0 && num <= 1000000000;
-  }, "Valor deve ser maior que zero e no máximo 1 bilhão"),
+    return !isNaN(num) && num > 0 && num <= 10000000; // 10 milhões
+  }, "Valor deve ser maior que zero e no máximo 10 milhões"),
   isMonthly: z.boolean().default(true),
 });
 
@@ -182,8 +182,8 @@ export const insertEarningSchema = createInsertSchema(earnings).omit({
   description: z.string().min(1, "Descrição é obrigatória"),
   amount: z.string().refine(val => {
     const num = parseFloat(val.replace(",", "."));
-    return !isNaN(num) && num > 0 && num <= 1000000000;
-  }, "Valor deve ser maior que zero e no máximo 1 bilhão"),
+    return !isNaN(num) && num > 0 && num <= 10000000; // 10 milhões
+  }, "Valor deve ser maior que zero e no máximo 10 milhões"),
   client: z.string().optional().nullable(),
 });
 

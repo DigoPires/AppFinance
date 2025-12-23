@@ -33,9 +33,9 @@ const formSchema = z.object({
   amount: z.string().refine(
     (val) => {
       const num = parseFloat(val.replace(",", "."));
-      return !isNaN(num) && num > 0 && num <= 1000000000;
+      return !isNaN(num) && num > 0 && num <= 10000000; // 10 milhões
     },
-    "Valor deve ser maior que zero e no máximo 1 bilhão"
+    "Valor deve ser maior que zero e no máximo 10 milhões"
   ),
   client: z.string().optional().nullable(),
 });
