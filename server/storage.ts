@@ -7,6 +7,7 @@ import {
   type User,
   type InsertUser,
   type Expense,
+  type ExpenseWithInstallments,
   type InsertExpense,
   type Income,
   type InsertIncome,
@@ -15,7 +16,7 @@ import {
   type RefreshToken,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, desc, asc, sql, gte, lte, inArray } from "drizzle-orm";
+import { eq, and, desc, asc, sql, gte, lte, inArray, like, isNull, or } from "drizzle-orm";
 
 export interface IStorage {
   getUser(id: number): Promise<User | undefined>;
@@ -139,7 +140,7 @@ export class DatabaseStorage implements IStorage {
       paid?: boolean;
       sortBy?: string;
     } = {}
-  ): Promise<{ expenses: Expense[]; total: number }> {
+  ): Promise<{ expenses: ExpenseWithInstallments[]; total: number }> {
     const { page = 1, limit = 10, search, category, startDate, endDate, fixed, paid, sortBy = "date_desc" } = options;
     const offset = (page - 1) * limit;
 
@@ -258,6 +259,10 @@ export class DatabaseStorage implements IStorage {
       endDate?: string;
       fixed?: boolean;
       paid?: boolean;
+      paymentMethod?: string;
+      account?: string;
+      location?: string;
+      notes?: string;
     } = {}
   ): Promise<{
     totalSpent: number;
@@ -268,7 +273,7 @@ export class DatabaseStorage implements IStorage {
     monthlyIncome: number;
     incomeCount: number;
   }> {
-    const { search, category, startDate, endDate, fixed, paid } = filters;
+    const { search, category, startDate, endDate, fixed, paid, paymentMethod, account, location, notes } = filters;
     const now = new Date();
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
@@ -300,9 +305,54 @@ export class DatabaseStorage implements IStorage {
     if (paid !== undefined) {
       expenseConditions.push(eq(expenses.isPaid, paid));
     }
+    if (paymentMethod) {
+      const paymentMethods = paymentMethod.split(',').map(p => p.trim()).filter(p => p.length > 0);
+      if (paymentMethods.length === 1) {
+        expenseConditions.push(sql`LOWER(REGEXP_REPLACE(${expenses.paymentMethod}, '[^a-zA-Z0-9\\s]', '', 'g')) = LOWER(REGEXP_REPLACE(${paymentMethods[0]}, '[^a-zA-Z0-9\\s]', '', 'g'))`);
+      } else if (paymentMethods.length > 1) {
+        const conditions = paymentMethods.map(p => sql`LOWER(REGEXP_REPLACE(${expenses.paymentMethod}, '[^a-zA-Z0-9\\s]', '', 'g')) = LOWER(REGEXP_REPLACE(${p}, '[^a-zA-Z0-9\\s]', '', 'g'))`);
+        expenseConditions.push(or(...conditions));
+      }
+    }
+    if (account) {
+      const accounts = account.split(',').map(a => a.trim()).filter(a => a.length > 0);
+      if (accounts.length === 1) {
+        expenseConditions.push(sql`LOWER(REGEXP_REPLACE(${expenses.account}, '[^a-zA-Z0-9\\s]', '', 'g')) = LOWER(REGEXP_REPLACE(${accounts[0]}, '[^a-zA-Z0-9\\s]', '', 'g'))`);
+      } else if (accounts.length > 1) {
+        const conditions = accounts.map(a => sql`LOWER(REGEXP_REPLACE(${expenses.account}, '[^a-zA-Z0-9\\s]', '', 'g')) = LOWER(REGEXP_REPLACE(${a}, '[^a-zA-Z0-9\\s]', '', 'g'))`);
+        expenseConditions.push(or(...conditions));
+      }
+    }
+    if (location) {
+      const locations = location.split(',').map(l => l.trim()).filter(l => l.length > 0);
+      if (locations.length === 1) {
+        if (locations[0] === 'null' || locations[0] === '') {
+          expenseConditions.push(isNull(expenses.location));
+        } else {
+          expenseConditions.push(sql`LOWER(REGEXP_REPLACE(${expenses.location}, '[^a-zA-Z0-9\\s]', '', 'g')) = LOWER(REGEXP_REPLACE(${locations[0]}, '[^a-zA-Z0-9\\s]', '', 'g'))`);
+        }
+      } else if (locations.length > 1) {
+        const nonNullLocations = locations.filter(l => l !== 'null' && l !== '');
+        const hasNullLocations = locations.includes('null') || locations.includes('');
+        
+        const locationConditions = [];
+        if (nonNullLocations.length > 0) {
+          locationConditions.push(or(...nonNullLocations.map(l => sql`LOWER(REGEXP_REPLACE(${expenses.location}, '[^a-zA-Z0-9\\s]', '', 'g')) = LOWER(REGEXP_REPLACE(${l}, '[^a-zA-Z0-9\\s]', '', 'g'))`)));
+        }
+        if (hasNullLocations) {
+          locationConditions.push(isNull(expenses.location));
+        }
+        if (locationConditions.length > 0) {
+          expenseConditions.push(or(...locationConditions));
+        }
+      }
+    }
+    if (notes) {
+      expenseConditions.push(sql`${expenses.notes} LIKE ${`%${notes}%`}`);
+    }
     const expenseWhereClause = and(...expenseConditions);
 
-    // Get non-installment expenses from current month
+    // Get non-installment expenses from current month (with applied filters)
     const monthlyNonInstallmentExpenses = await db
       .select()
       .from(expenses)

@@ -314,6 +314,10 @@ export default function Dashboard() {
       userId: user?.id,
       search: filters.description,
       category: filters.category.length > 0 ? filters.category.join(',') : undefined,
+      paymentMethod: filters.paymentMethod.length > 0 ? filters.paymentMethod.join(',') : undefined,
+      account: filters.account.length > 0 ? filters.account.join(',') : undefined,
+      location: filters.location.length > 0 ? filters.location.join(',') : undefined,
+      notes: filters.notes,
       fixed: filters.isFixed,
       dateFilter: filters.dateFilter
     }],
@@ -329,6 +333,26 @@ export default function Dashboard() {
       // Add category filter
       if (filters.category.length > 0) {
         params.append('category', filters.category.join(','));
+      }
+
+      // Add payment method filter
+      if (filters.paymentMethod.length > 0) {
+        params.append('paymentMethod', filters.paymentMethod.join(','));
+      }
+
+      // Add account filter
+      if (filters.account.length > 0) {
+        params.append('account', filters.account.join(','));
+      }
+
+      // Add location filter
+      if (filters.location.length > 0) {
+        params.append('location', filters.location.join(','));
+      }
+
+      // Add notes filter
+      if (filters.notes) {
+        params.append('notes', filters.notes);
       }
 
       // Add fixed filter
@@ -503,7 +527,7 @@ export default function Dashboard() {
       (filters.account.length === 0 || (expense.account && filters.account.includes(expense.account))) &&
       (filters.location.length === 0 || (expense.location && filters.location.includes(expense.location))) &&
       (filters.isFixed === undefined || expense.isFixed === filters.isFixed) &&
-      (!filters.notes || (expense.notes && normalizeText(expense.notes).includes(normalizeText(filters.notes)))) &&
+      (!filters.notes || (expense.notes && expense.notes.toLowerCase().includes(filters.notes.toLowerCase()))) &&
       dateMatch &&
       // Despesas fixas pendentes seguem as mesmas regras de filtro que as outras despesas
       (!expense.isFixed || expense.isPaid) &&
@@ -1290,7 +1314,7 @@ export default function Dashboard() {
                 <Skeleton key={i} className="h-16 w-full" />
               ))
             ) : categoryEntries.length > 0 ? (
-              categoryEntries.slice(0, 5).map(([category, amount]) => (
+              categoryEntries.slice(0, 8).map(([category, amount]) => (
                 <CategoryCard
                   key={category}
                   category={category}
@@ -1316,8 +1340,6 @@ export default function Dashboard() {
           <CardContent>
             <div className="grid grid-cols-1 xl:grid-cols-1 gap-4 sm:gap-6">
               {(() => {
-                const pendingCount = pendingFixedExpenses?.length || 0;
-                const recentCount = filteredRecentExpenses?.length || 0;
 
                 const sections = [
                   {
@@ -1327,7 +1349,7 @@ export default function Dashboard() {
                     loading: pendingLoading,
                     emptyIcon: Check,
                     emptyText: 'Nenhuma pendente',
-                    slice: 5
+                    slice: 8
                   },
                   {
                     key: 'recent',
@@ -1336,7 +1358,7 @@ export default function Dashboard() {
                     loading: recentLoading,
                     emptyIcon: Wallet,
                     emptyText: 'Nenhuma recente',
-                    slice: 5
+                    slice: 8
                   }
                 ];
 

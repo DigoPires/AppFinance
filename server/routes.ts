@@ -398,7 +398,7 @@ export async function registerRoutes(
 
   app.get("/api/expenses/stats", authMiddleware, async (req: AuthenticatedRequest, res) => {
     try {
-      const { search, category, startDate, endDate, fixed, paid } = req.query;
+      const { search, category, startDate, endDate, fixed, paid, paymentMethod, account, location, notes } = req.query;
 
       const stats = await storage.getExpenseStats(Number(req.user!.id), {
         search: search as string,
@@ -407,6 +407,10 @@ export async function registerRoutes(
         endDate: endDate as string,
         fixed: fixed === 'true' ? true : fixed === 'false' ? false : undefined,
         paid: paid === 'true' ? true : paid === 'false' ? false : undefined,
+        paymentMethod: paymentMethod as string,
+        account: account as string,
+        location: location as string,
+        notes: notes as string,
       });
       res.json(stats);
     } catch (error) {
