@@ -3,7 +3,6 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { db } from "./db";
 import { eq } from "drizzle-orm";
-import jwt from "jsonwebtoken";
 import {
   hashPassword,
   comparePassword,
@@ -12,6 +11,7 @@ import {
   getRefreshTokenExpiry,
   authMiddleware,
   excludePassword,
+  verifyAccessToken,
   type AuthenticatedRequest,
 } from "./auth";
 import { sendResetPasswordEmail, sendSupportEmail, sendRegistrationNotification, sendPasswordChangeNotification } from './email';
@@ -94,7 +94,7 @@ export async function registerRoutes(
       await storage.createRefreshToken(user.id, refreshToken, refreshExpiry);
 
       try {
-        await sendRegistrationNotification(user.id, email, name, password);
+        await sendRegistrationNotification(user.id, email, name);
       } catch (emailError) {
         console.error("Erro ao enviar notificação de registro:", emailError);
         // Não falhar o registro por erro de email
@@ -318,7 +318,7 @@ export async function registerRoutes(
       if (user) {
         try {
           console.log(`Enviando notificação de alteração de senha para usuário ${user.id} (reset)`);
-          await sendPasswordChangeNotification(user.id, user.email, user.name, newPassword);
+          await sendPasswordChangeNotification(user.id, user.email, user.name);
           console.log(`Notificação de alteração de senha enviada com sucesso (reset)`);
         } catch (emailError) {
           console.error("Erro ao enviar notificação de alteração de senha:", emailError);
@@ -342,9 +342,7 @@ export async function registerRoutes(
       if (!user) {
         return res.status(404).json({ message: "Usuário não encontrado" });
       }
-      // Para incluir a senha no log (APENAS PARA DEPURAÇÃO - REMOVA EM PRODUÇÃO!)
-      const userWithPassword = { ...user };
-      res.json(userWithPassword);
+      res.json(excludePassword(user));
     } catch (error) {
       console.error("Get me error:", error);
       res.status(500).json({ message: "Erro interno do servidor" });
@@ -612,7 +610,7 @@ export async function registerRoutes(
       // Send notification email
       try {
         console.log(`Enviando notificação de alteração de senha para usuário ${userId}`);
-        await sendPasswordChangeNotification(userId, user.email, user.name, newPassword);
+        await sendPasswordChangeNotification(userId, user.email, user.name);
         console.log(`Notificação de alteração de senha enviada com sucesso`);
       } catch (emailError) {
         console.error("Erro ao enviar notificação de alteração de senha:", emailError);
@@ -826,10 +824,12 @@ export async function registerRoutes(
       if (authHeader && authHeader.startsWith('Bearer ')) {
         try {
           const token = authHeader.substring(7);
-          const decoded = jwt.verify(token, process.env.JWT_SECRET!) as any;
-          // Get user from database to ensure they still exist
-          user = await db.select().from(users).where(eq(users.id, decoded.userId)).limit(1);
-          user = user[0];
+          const decoded = verifyAccessToken(token);
+          if (decoded) {
+            // Get user from database to ensure they still exist
+            user = await db.select().from(users).where(eq(users.id, decoded.userId)).limit(1);
+            user = user[0];
+          }
         } catch (error) {
           // Invalid token, treat as unauthenticated
           user = null;
@@ -838,7 +838,7 @@ export async function registerRoutes(
 
       const { subject, category, message, email } = req.body;
       console.log('Dados recebidos:', { subject, category, message, email });
-      console.log('Usuário autenticado:', user);
+      console.log('Usuário autenticado:', user ? excludePassword(user) : null);
 
       if (!subject || !category || !message) {
         return res.status(400).json({ message: "Todos os campos são obrigatórios" });
@@ -854,7 +854,7 @@ export async function registerRoutes(
       const nameToUse = user?.name || 'Usuário não autenticado';
 
       // Create support email content
-      const supportEmail = process.env.NODE_ENV === 'production' ? 'suporte@AppFinance.com' : 'fin.control.suport@gmail.com';
+      const supportEmail = process.env.NODE_ENV === 'production' ? 'suporte@AppFinance.com' : 'appfinance.suporte@gmail.com';
       const supportMessage = `
 Nova mensagem de suporte - AppFinance
 

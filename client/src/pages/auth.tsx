@@ -240,6 +240,15 @@ export default function AuthPage() {
                       )}
                       Entrar
                     </Button>
+
+                    <div className="mt-4 text-center">
+                      <Link
+                        href="/forgot-password"
+                        className="text-sm text-muted-foreground hover:text-foreground"
+                      >
+                        Esqueceu a senha?
+                      </Link>
+                    </div>
                   </form>
                 </Form>
               ) : (
