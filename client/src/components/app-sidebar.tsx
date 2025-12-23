@@ -1,4 +1,5 @@
 import { LayoutDashboard, Receipt, LogOut, User, HelpCircle, Instagram, Copyright, TrendingUp } from "lucide-react";
+import logo from "@/assets/img/Logo_AppFinance.png";
 import { Link, useLocation } from "wouter";
 import {
   Sidebar,
@@ -68,8 +69,8 @@ export function AppSidebar() {
     <Sidebar>
       <SidebarHeader className="p-4">
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary">
-            <Receipt className="h-5 w-5 text-primary-foreground" />
+          <div className="flex h-10 w-10 items-center justify-center">
+            <img src={logo} alt="AppFinance Logo" className="h-10 w-10" />
           </div>
           <div className="flex flex-col">
             <span className="text-lg font-semibold" data-testid="text-app-name">

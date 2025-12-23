@@ -1,5 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import logo from "@/assets/img/Logo_AppFinance.png";
+import { ThemeToggle } from "@/components/theme-toggle";
 import {
   HelpCircle,
   Mail,
@@ -122,7 +124,7 @@ export default function SupportPage() {
         <div className="flex flex-col justify-center px-6 py-12 flex-1 bg-gradient-to-br from-primary/10 to-primary/5 lg:flex">
           <div className="mx-auto w-full max-w-md">
             <div className="flex items-center gap-2 mb-8">
-              <Receipt className="h-8 w-8 text-primary" />
+              <img src={logo} alt="AppFinance Logo" className="h-8 w-8" />
               <span className="text-2xl font-bold">AppFinance</span>
             </div>
             <h1 className="text-3xl font-bold text-foreground mb-4">
@@ -143,13 +145,17 @@ export default function SupportPage() {
         </div>
 
         {/* Right side - Support content */}
-        <div className="flex flex-col justify-center px-6 py-12 flex-1 lg:flex">
-          <div className="mx-auto w-full max-w-md">
-            <div className="text-center mb-8">
-              <HelpCircle className="mx-auto h-12 w-12 text-primary mb-4" />
-              <h2 className="text-2xl font-bold">Suporte</h2>
-              <p className="text-muted-foreground">Estamos aqui para ajudar</p>
-            </div>
+        <div className="relative flex flex-col flex-1 lg:flex">
+          <div className="absolute top-4 right-4 z-10">
+            <ThemeToggle />
+          </div>
+          <div className="flex flex-col justify-center px-6 py-12 flex-1">
+            <div className="mx-auto w-full max-w-md">
+              <div className="text-center mb-8">
+                <HelpCircle className="mx-auto h-12 w-12 text-primary mb-4" />
+                <h2 className="text-2xl font-bold">Suporte</h2>
+                <p className="text-muted-foreground">Estamos aqui para ajudar</p>
+              </div>
 
             <Card>
               <CardHeader>
@@ -290,7 +296,7 @@ export default function SupportPage() {
                 >
                   <Instagram className="h-4 w-4" />
                   <span className="hidden sm:block">@_pires.r</span>
-                </a>
+                </a>  
               </div>
               <p className="text-xs opacity-70 max-w-md text-center">
                 AppFinance - Sua ferramenta completa para gestão financeira pessoal.
@@ -298,6 +304,7 @@ export default function SupportPage() {
               </p>
             </div>
           </div>
+        </div>
         </div>
       </div>
     );

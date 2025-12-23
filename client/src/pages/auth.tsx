@@ -3,13 +3,13 @@ import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import {
-  Receipt,
   Loader2,
   Instagram,
   Copyright,
   Eye,
   EyeOff,
 } from "lucide-react";
+import logo from "@/assets/img/Logo_AppFinance.png";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -130,8 +130,8 @@ export default function AuthPage() {
       {/* Coluna esquerda (desktop) */}
       <div className="hidden w-1/2 bg-primary lg:flex lg:flex-col lg:items-center lg:justify-center lg:p-12">
         <div className="flex flex-col items-center text-center text-primary-foreground">
-          <div className="mb-8 flex h-20 w-20 items-center justify-center rounded-2xl bg-white/20 backdrop-blur-sm">
-            <Receipt className="h-10 w-10" />
+          <div className="mb-8 flex h-20 w-20 items-center justify-center">
+            <img src={logo} alt="AppFinance Logo" className="h-20 w-20" />
           </div>
           <h1 className="mb-4 text-4xl font-bold">AppFinance</h1>
           <p className="max-w-md text-lg opacity-90">

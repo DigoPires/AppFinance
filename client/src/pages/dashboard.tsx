@@ -9,7 +9,6 @@ import {
   ArrowUpRight,
   Receipt,
   Wallet,
-  PiggyBank,
   Utensils,
   Car,
   Home,
@@ -1280,7 +1279,7 @@ export default function Dashboard() {
         <StatCard
           title="Transações"
           value={String(stats?.expenseCount || 0)}
-          icon={PiggyBank}
+          icon={Repeat}
           description="Total de registros"
           loading={allExpensesLoading || statsLoading}
         />
