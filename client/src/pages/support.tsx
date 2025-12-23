@@ -281,7 +281,7 @@ export default function SupportPage() {
                   <Copyright className="h-3 w-3" />
                   <span>Rodrigo Pires Figueiredo | 2025</span>
                 </div>
-                <span>|</span>
+                <span className="hidden sm:block">|</span>
                 <a
                   href="https://instagram.com/_pires.r"
                   target="_blank"
@@ -289,7 +289,7 @@ export default function SupportPage() {
                   className="flex items-center gap-1 hover:text-foreground transition-colors"
                 >
                   <Instagram className="h-4 w-4" />
-                  <span>@_pires.r</span>
+                  <span className="hidden sm:block">@_pires.r</span>
                 </a>
               </div>
               <p className="text-xs opacity-70 max-w-md text-center">

@@ -386,15 +386,15 @@ export default function AuthPage() {
 
           <div className="mt-6 flex flex-col items-center gap-4 text-sm text-muted-foreground">
             <div className="flex items-center gap-6">
-              <Link href="/support" className="flex items-center gap-1 hover:text-foreground transition-colors">
+              <Link href="/support" className="hidden sm:flex items-center gap-1 hover:text-foreground transition-colors">
                 <span>Ajuda & Suporte</span>
               </Link>
-              <span>|</span>
+              <span className="hidden sm:block">|</span>
               <div className="flex items-center gap-2">
                 <Copyright className="h-3 w-3" />
                 <span>Rodrigo Pires Figueiredo | 2025</span>
               </div>
-              <span>|</span>
+              <span className="hidden sm:block">|</span>
               <a
                 href="https://instagram.com/_pires.r"
                 target="_blank"
@@ -402,7 +402,7 @@ export default function AuthPage() {
                 className="flex items-center gap-1 hover:text-foreground transition-colors"
               >
                 <Instagram className="h-4 w-4" />
-                <span>@_pires.r</span>
+                <span className="hidden sm:block">@_pires.r</span>
               </a>
             </div>
             <p className="text-xs opacity-70 max-w-md text-center">

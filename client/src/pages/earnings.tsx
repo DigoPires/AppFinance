@@ -63,6 +63,7 @@ import { Check } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth";
 import { EarningForm } from "@/components/earning-form";
+import { Link } from "wouter";
 import type { Earning, Income } from "@shared/schema";
 
 function formatCurrency(value: string | number) {
@@ -487,10 +488,18 @@ export default function Earnings() {
             Gerencie suas receitas e ganhos extras
           </p>
         </div>
-        <Button onClick={() => setIsFormOpen(true)} className="w-full sm:w-auto">
-          <Plus className="mr-2 h-4 w-4" />
-          Nova Receita
-        </Button>
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <Link href="/">
+            <Button variant="outline" className="w-full sm:w-auto">
+              <ChevronLeft className="mr-2 h-4 w-4" />
+              Voltar ao Dashboard
+            </Button>
+          </Link>
+          <Button onClick={() => setIsFormOpen(true)} className="w-full sm:w-auto">
+            <Plus className="mr-2 h-4 w-4" />
+            Nova Receita
+          </Button>
+        </div>
       </div>
 
       <div className="space-y-6">

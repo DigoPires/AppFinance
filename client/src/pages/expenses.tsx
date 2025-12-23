@@ -66,6 +66,7 @@ import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth";
 import { ExpenseForm } from "@/components/expense-form";
+import { Link } from "wouter";
 import { cn } from "@/lib/utils";
 import type { ExpenseWithInstallments, Expense } from "@shared/schema";
 import { CATEGORIES } from "@shared/schema";
@@ -655,10 +656,18 @@ export default function ExpensesPage() {
             Gerencie todas as suas despesas
           </p>
         </div>
-        <Button onClick={() => handleOpenForm()} data-testid="button-add-expense">
-          <Plus className="mr-2 h-4 w-4" />
-          Nova Despesa
-        </Button>
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <Link href="/">
+            <Button variant="outline" className="w-full sm:w-auto">
+              <ChevronLeft className="mr-2 h-4 w-4" />
+              Voltar ao Dashboard
+            </Button>
+          </Link>
+          <Button onClick={() => handleOpenForm()} data-testid="button-add-expense" className="w-full sm:w-auto">
+            <Plus className="mr-2 h-4 w-4" />
+            Nova Despesa
+          </Button>
+        </div>
       </div>
 
       <Card>
