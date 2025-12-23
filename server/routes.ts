@@ -854,7 +854,7 @@ export async function registerRoutes(
       const nameToUse = user?.name || 'Usuário não autenticado';
 
       // Create support email content
-      const supportEmail = process.env.NODE_ENV === 'production' ? 'suporte@AppFinance.com' : 'appfinance.suporte@gmail.com';
+      const supportEmail = process.env.NODE_ENV === 'appfinance.suporte@gmail.com';
       const supportMessage = `
 Nova mensagem de suporte - AppFinance
 
