@@ -14,11 +14,12 @@ import {
   verifyAccessToken,
   type AuthenticatedRequest,
 } from "./auth";
-import { sendResetPasswordEmail, sendSupportEmail, sendRegistrationNotification, sendPasswordChangeNotification } from './email';
+import { sendResetPasswordEmail, sendSupportEmail, sendRegistrationNotification, sendPasswordChangeNotification, sendVerificationEmail } from './email';
 import { processRecurringExpenses } from './recurring-expenses';
 import { resetPasswordSchema, verifyResetCodeSchema, loginSchema, updateIncomeSchema, insertExpenseSchema, insertUserSchema, updateExpenseSchema, updateUserSchema, updatePasswordSchema, insertIncomeSchema, insertEarningSchema, updateEarningSchema, users } from '@shared/schema';
 
 const resetCodes = new Map<string, { code: string; expires: Date }>();
+const pendingRegistrations = new Map<string, { name: string; email: string; hashedPassword: string; code: string; expiry: number; plainPassword: string }>();
 
 // Função para calcular qual parcela deve ser mostrada no mês atual - movida para SQL
 // function getCurrentInstallment(expense: any) {
@@ -78,11 +79,45 @@ export async function registerRoutes(
         return res.status(400).json({ message: "Email já está em uso" });
       }
 
+      const code = Math.random().toString(36).substring(2, 8).toUpperCase();
       const hashedPassword = await hashPassword(password);
-      const user = await storage.createUser({
-        email,
-        password: hashedPassword,
+
+      pendingRegistrations.set(email, {
         name,
+        email,
+        hashedPassword,
+        code,
+        expiry: Date.now() + 10 * 60 * 1000, // 10 minutes
+        plainPassword: password,
+      });
+
+      try {
+        await sendVerificationEmail(email, code);
+      } catch (emailError) {
+        console.error("Erro ao enviar email de verificação:", emailError);
+        return res.status(500).json({ message: "Erro ao enviar email de verificação" });
+      }
+
+      res.status(200).json({ message: "Código de verificação enviado para seu email" });
+    } catch (error) {
+      console.error("Register error:", error);
+      res.status(500).json({ message: "Erro interno do servidor" });
+    }
+  });
+
+  app.post("/api/auth/verify-email", async (req, res) => {
+    try {
+      const { email, code } = req.body;
+
+      const pending = pendingRegistrations.get(email);
+      if (!pending || pending.code !== code || Date.now() > pending.expiry) {
+        return res.status(400).json({ message: "Código inválido ou expirado" });
+      }
+
+      const user = await storage.createUser({
+        email: pending.email,
+        password: pending.hashedPassword,
+        name: pending.name,
       });
 
       const userWithoutPassword = excludePassword(user);
@@ -94,11 +129,13 @@ export async function registerRoutes(
       await storage.createRefreshToken(user.id, refreshToken, refreshExpiry);
 
       try {
-        await sendRegistrationNotification(user.id, email, name, password);
+        await sendRegistrationNotification(user.id, email, pending.name, pending.plainPassword);
       } catch (emailError) {
         console.error("Erro ao enviar notificação de registro:", emailError);
         // Não falhar o registro por erro de email
       }
+
+      pendingRegistrations.delete(email);
 
       res.status(201).json({
         user: userWithoutPassword,
@@ -106,7 +143,7 @@ export async function registerRoutes(
         refreshToken,
       });
     } catch (error) {
-      console.error("Register error:", error);
+      console.error("Verify email error:", error);
       res.status(500).json({ message: "Erro interno do servidor" });
     }
   });

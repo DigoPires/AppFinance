@@ -13,6 +13,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (name: string, email: string, password: string) => Promise<void>;
+  verifyEmail: (email: string, code: string) => Promise<void>;
   logout: () => Promise<void>;
   updateUser: (userData: Partial<UserWithoutPassword>) => void;
   getAccessToken: () => Promise<string | null>;
@@ -232,7 +233,49 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         });
 
         if (!response.ok) {
-          let errorMessage = "Erro ao criar conta";
+          let errorMessage = "Erro ao iniciar cadastro";
+          try {
+            const error = await response.json();
+            errorMessage = error.message || errorMessage;
+          } catch {
+            errorMessage = `Erro ${response.status}: ${response.statusText}`;
+          }
+          throw new Error(errorMessage);
+        }
+
+        const data = await response.json();
+        return data; // Return the message
+      } catch (error) {
+        lastError = error as Error;
+        
+        // If it's a rate limit error, wait before retrying
+        if ((error as Error).message.includes('Too many requests') && attempt < maxRetries) {
+          const delay = Math.pow(2, attempt) * 1000; // Exponential backoff
+          await new Promise(resolve => setTimeout(resolve, delay));
+          continue;
+        }
+        
+        throw error;
+      }
+    }
+    
+    throw lastError!;
+  };
+
+  const verifyEmail = async (email: string, code: string) => {
+    const maxRetries = 3;
+    let lastError: Error;
+
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        const response = await fetch("/api/auth/verify-email", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, code }),
+        });
+
+        if (!response.ok) {
+          let errorMessage = "Erro ao verificar email";
           try {
             const error = await response.json();
             errorMessage = error.message || errorMessage;
@@ -250,6 +293,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setStoredTokens(newTokens);
         setTokens(newTokens);
         setUser(data.user);
+        
+        // Invalidate all queries to refresh data for the new user
+        queryClient.invalidateQueries();
         return;
       } catch (error) {
         lastError = error as Error;
@@ -303,6 +349,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         isAuthenticated: !!user,
         login,
         register,
+        verifyEmail,
         logout,
         updateUser,
         getAccessToken,

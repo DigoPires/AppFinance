@@ -56,11 +56,14 @@ type RegisterFormData = z.infer<typeof registerSchema>;
 export default function AuthPage() {
   const [isLogin, setIsLogin] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [verificationEmail, setVerificationEmail] = useState("");
+  const [verificationCode, setVerificationCode] = useState("");
 
   const [showLoginPassword, setShowLoginPassword] = useState(false);
   const [showRegisterPasswords, setShowRegisterPasswords] = useState(false);
 
-  const { login, register } = useAuth();
+  const { login, register, verifyEmail } = useAuth();
   const { toast } = useToast();
 
   const loginForm = useForm<LoginFormData>({
@@ -80,6 +83,9 @@ export default function AuthPage() {
 
   const switchMode = () => {
     setIsLogin((prev) => !prev);
+    setIsVerifying(false);
+    setVerificationEmail("");
+    setVerificationCode("");
     setShowLoginPassword(false);
     setShowRegisterPasswords(false);
     loginForm.reset();
@@ -107,18 +113,46 @@ export default function AuthPage() {
     setIsLoading(true);
     try {
       await register(data.name, data.email, data.password);
+      setVerificationEmail(data.email);
+      setIsVerifying(true);
       toast({
-        title: "Conta criada!",
-        description: "Sua conta foi criada com sucesso.",
+        title: "Verifique seu email",
+        description: "Enviamos um código de verificação para seu email.",
       });
     } catch (error) {
       toast({
         variant: "destructive",
-        title: "Erro ao criar conta",
+        title: "Erro ao iniciar cadastro",
         description:
           error instanceof Error
             ? error.message
-            : "Não foi possível criar a conta",
+            : "Não foi possível iniciar o cadastro",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const onVerifySubmit = async () => {
+    setIsLoading(true);
+    try {
+      await verifyEmail(verificationEmail, verificationCode);
+      toast({
+        title: "Conta criada!",
+        description: "Sua conta foi criada e verificada com sucesso.",
+      });
+      // Reset states
+      setIsVerifying(false);
+      setVerificationEmail("");
+      setVerificationCode("");
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Erro na verificação",
+        description:
+          error instanceof Error
+            ? error.message
+            : "Código inválido",
       });
     } finally {
       setIsLoading(false);
@@ -163,17 +197,58 @@ export default function AuthPage() {
         <div className="flex flex-1 flex-col items-center justify-center p-8">
           <Card className="w-full max-w-md">
             <CardHeader className="text-center">
-              <CardTitle>{isLogin ? "Entrar" : "Criar Conta"}</CardTitle>
+              <CardTitle>
+                {isVerifying ? "Verificar Email" : isLogin ? "Entrar" : "Criar Conta"}
+              </CardTitle>
               <CardDescription>
-                {isLogin
+                {isVerifying
+                  ? `Enviamos um código para ${verificationEmail}`
+                  : isLogin
                   ? "Entre com suas credenciais"
                   : "Crie sua conta gratuitamente"}
               </CardDescription>
             </CardHeader>
 
             <CardContent>
-              {/* ================= LOGIN ================= */}
-              {isLogin ? (
+              {isVerifying ? (
+                  /* ================= VERIFICAÇÃO ================= */
+                  <div className="space-y-4">
+                    <div>
+                      <label className="text-sm font-medium">Código de Verificação</label>
+                      <Input
+                        value={verificationCode}
+                        onChange={(e) => setVerificationCode(e.target.value.toUpperCase())}
+                        placeholder="Digite o código de 6 caracteres"
+                        maxLength={6}
+                        className="mt-1"
+                      />
+                    </div>
+
+                    <Button
+                      className="w-full"
+                      disabled={isLoading || verificationCode.length !== 6}
+                      onClick={onVerifySubmit}
+                    >
+                      {isLoading && (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      )}
+                      Verificar Email
+                    </Button>
+
+                    <div className="text-center">
+                      <button
+                        onClick={() => {
+                          setIsVerifying(false);
+                          setVerificationEmail("");
+                          setVerificationCode("");
+                        }}
+                        className="text-sm text-muted-foreground hover:text-foreground"
+                      >
+                        Voltar ao cadastro
+                      </button>
+                    </div>
+                  </div>
+                ) : isLogin ? (
                 <Form {...loginForm}>
                   <form
                     onSubmit={loginForm.handleSubmit(onLoginSubmit)}
@@ -251,7 +326,7 @@ export default function AuthPage() {
                     </div>
                   </form>
                 </Form>
-              ) : (
+                ) : (
                 /* ================= CADASTRO ================= */
                 <Form {...registerForm}>
                   <form
@@ -370,26 +445,30 @@ export default function AuthPage() {
                     </Button>
                   </form>
                 </Form>
+              ) }
+
+                {!isVerifying && (
+                <>
+                  <div className="mt-6 text-center text-sm">
+                    {isLogin ? "Não tem conta?" : "Já tem conta?"}{" "}
+                    <button
+                      onClick={switchMode}
+                      className="font-medium text-primary hover:underline"
+                    >
+                      {isLogin ? "Criar conta" : "Entrar"}
+                    </button>
+                  </div>
+
+                  <div className="mt-4 text-center">
+                    <Link
+                      href="/support"
+                      className="text-sm text-muted-foreground hover:text-foreground"
+                    >
+                      Precisa de ajuda? Contate o suporte
+                    </Link>
+                  </div>
+                </>
               )}
-
-              <div className="mt-6 text-center text-sm">
-                {isLogin ? "Não tem conta?" : "Já tem conta?"}{" "}
-                <button
-                  onClick={switchMode}
-                  className="font-medium text-primary hover:underline"
-                >
-                  {isLogin ? "Criar conta" : "Entrar"}
-                </button>
-              </div>
-
-              <div className="mt-4 text-center">
-                <Link
-                  href="/support"
-                  className="text-sm text-muted-foreground hover:text-foreground"
-                >
-                  Precisa de ajuda? Contate o suporte
-                </Link>
-              </div>
             </CardContent>
           </Card>
 

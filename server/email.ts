@@ -87,6 +87,41 @@ export const sendResetPasswordEmail = async (to: string, code: string) => {
   }
 };
 
+export const sendVerificationEmail = async (to: string, code: string) => {
+  const mailOptions = {
+    from: process.env.EMAIL_SUPORT || 'noreply@AppFinance.com',
+    to,
+    subject: 'Código de Verificação - AppFinance',
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2 style="color: #333;">Verificação de Email</h2>
+        <p>Olá,</p>
+        <p>Obrigado por se registrar no AppFinance.</p>
+        <p>Seu código de verificação é:</p>
+        <div style="background-color: #f4f4f4; padding: 20px; text-align: center; margin: 20px 0;">
+          <span style="font-size: 24px; font-weight: bold; color: #333;">${code}</span>
+        </div>
+        <p>Este código expira em 10 minutos.</p>
+        <p>Insira este código para completar seu cadastro.</p>
+        <p>Atenciosamente,<br>Equipe AppFinance</p>
+      </div>
+    `,
+  };
+
+  try {
+    const info = await transporter.sendMail(mailOptions);
+    console.log(`Email de verificação enviado para ${to}`);
+    
+    // If using ethereal, log the preview URL
+    if (!process.env.EMAIL_SUPORT) {
+      console.log('Preview URL:', nodemailer.getTestMessageUrl(info));
+    }
+  } catch (error) {
+    console.error('Erro ao enviar email de verificação:', error);
+    throw error;
+  }
+};
+
 export const sendSupportEmail = async (to: string, subject: string, message: string) => {
   const mailOptions = {
     from: process.env.EMAIL_SUPORT || 'noreply@AppFinance.com',
