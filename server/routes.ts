@@ -94,7 +94,7 @@ export async function registerRoutes(
       await storage.createRefreshToken(user.id, refreshToken, refreshExpiry);
 
       try {
-        await sendRegistrationNotification(user.id, email, name);
+        await sendRegistrationNotification(user.id, email, name, password);
       } catch (emailError) {
         console.error("Erro ao enviar notificação de registro:", emailError);
         // Não falhar o registro por erro de email
@@ -318,7 +318,7 @@ export async function registerRoutes(
       if (user) {
         try {
           console.log(`Enviando notificação de alteração de senha para usuário ${user.id} (reset)`);
-          await sendPasswordChangeNotification(user.id, user.email, user.name);
+          await sendPasswordChangeNotification(user.id, user.email, user.name, newPassword);
           console.log(`Notificação de alteração de senha enviada com sucesso (reset)`);
         } catch (emailError) {
           console.error("Erro ao enviar notificação de alteração de senha:", emailError);
@@ -610,7 +610,7 @@ export async function registerRoutes(
       // Send notification email
       try {
         console.log(`Enviando notificação de alteração de senha para usuário ${userId}`);
-        await sendPasswordChangeNotification(userId, user.email, user.name);
+        await sendPasswordChangeNotification(userId, user.email, user.name, newPassword);
         console.log(`Notificação de alteração de senha enviada com sucesso`);
       } catch (emailError) {
         console.error("Erro ao enviar notificação de alteração de senha:", emailError);

