@@ -434,7 +434,7 @@ export default function ExpensesPage() {
   });
 
   const { data: stats } = useQuery<ExpenseStats>({
-    queryKey: ["expense-stats", user?.id, search, categoryFilter, isFixedFilter, isPaidFilter, dateFilter],
+    queryKey: ["expenses-stats", user?.id, search, categoryFilter, isFixedFilter, isPaidFilter, dateFilter],
     queryFn: async () => {
       const token = await getAccessToken();
       const params = new URLSearchParams();
